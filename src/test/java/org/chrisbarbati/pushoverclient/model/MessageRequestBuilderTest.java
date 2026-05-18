@@ -26,6 +26,7 @@ class MessageRequestBuilderTest {
      */
     @Test
     void builder_setsAllOptionalFields() {
+        // A single attachment instance lets the test verify nested value propagation too.
         Attachment attachment = new Attachment(
                 "sample.jpg",
                 new byte[]{1, 2, 3},
@@ -51,6 +52,7 @@ class MessageRequestBuilderTest {
                 .encrypted(true)
                 .build();
 
+        // This test intentionally checks many getters to guard the builder-to-model handoff.
         assertEquals("uQiRzpo4DXghDmr9QzzfQu27cmVRsG", request.user());
         assertEquals("hello", request.message());
         assertEquals("droid4", request.device());

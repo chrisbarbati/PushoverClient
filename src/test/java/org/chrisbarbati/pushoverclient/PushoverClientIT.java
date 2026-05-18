@@ -3,6 +3,7 @@ package org.chrisbarbati.pushoverclient;
 import org.chrisbarbati.pushoverclient.exception.PushoverApiException;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import org.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
 import org.junit.jupiter.api.Assumptions;
@@ -18,6 +19,7 @@ import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -392,18 +394,18 @@ class PushoverClientIT {
     }
 
     /**
-     * Verifies callback and tags fields for emergency messages when explicitly enabled.
+     * Verifies the opt-in emergency receipt lifecycle using callback and tag fields.
      *
      * @apiNote This test is opt-in because emergency notifications can be disruptive.
      * @throws Exception when the API call fails unexpectedly
-     * @since 0.1.0
+     * @since 0.2.0
      * @author Christian Barbati
      */
     @Test
-    void live_sendEmergency_withCallbackAndTags_whenEnabled() throws Exception {
+    void live_receiptsLifecycle_withEmergencyMessage_whenEnabled() throws Exception {
         String enabled = optional("pushover.enableEmergencyTests");
         if (!"true".equalsIgnoreCase(enabled)) {
-            LOGGER.warn("Skipping emergency callback/tags test: set pushover.enableEmergencyTests=true to enable");
+            LOGGER.warn("Skipping emergency receipt lifecycle test: set pushover.enableEmergencyTests=true to enable");
         }
         Assumptions.assumeTrue("true".equalsIgnoreCase(enabled), "emergency test disabled");
 
@@ -413,37 +415,49 @@ class PushoverClientIT {
         String tags = optional("pushover.tags");
         boolean strict = "true".equalsIgnoreCase(optional("pushover.strictEmergencyTest"));
 
-        if (isBlank(callbackUrl)) {
-            LOGGER.warn("Skipping emergency callback/tags test: missing pushover.callbackUrl");
-        }
-        Assumptions.assumeTrue(!isBlank(callbackUrl), "missing pushover.callbackUrl");
-
-        if (isBlank(tags)) {
-            tags = "pushoverclient-it";
-        }
+        String baseTag = isBlank(tags) ? "pushoverclient-it" : tags.split(",")[0].trim();
+        String lifecycleTag = baseTag + "-" + (System.currentTimeMillis() / 1000L);
 
         PushoverClient client = new PushoverClient(token, optional("pushover.encryptionKey"));
-        MessageRequest request = MessageRequest.builder(user, "Emergency callback/tags integration test")
+        MessageRequest.Builder requestBuilder = MessageRequest.builder(user, "Emergency receipt lifecycle integration test")
                 .title("PushoverClient")
                 .priority(MessagePriority.EMERGENCY)
                 .retry(30)
                 .expire(300)
-                .callback(callbackUrl)
-                .tags(tags)
-                .build();
+                .tags(lifecycleTag);
+
+        if (!isBlank(callbackUrl) && !callbackUrl.contains("example.com")) {
+            requestBuilder.callback(callbackUrl);
+        } else {
+            LOGGER.warn("Running emergency receipt lifecycle test without callback URL; configure pushover.callbackUrl with a real public endpoint to include callback coverage");
+        }
+
+        MessageRequest request = requestBuilder.build();
 
         try {
-            assertEquals(1, client.sendMessage(request).status());
+            var messageResponse = client.sendMessage(request);
+            assertEquals(1, messageResponse.status());
+            assertFalse(isBlank(messageResponse.receipt()));
+
+            ReceiptStatusResponse receiptResponse = client.getReceipt(messageResponse.receipt());
+            assertEquals(1, receiptResponse.status());
+            assertNotNull(receiptResponse.request());
+            if (!isBlank(receiptResponse.receipt())) {
+                assertEquals(messageResponse.receipt(), receiptResponse.receipt());
+            }
+
+            assertEquals(1, client.cancelReceipt(messageResponse.receipt()).status());
+            assertEquals(1, client.cancelByTag(lifecycleTag).status());
         } catch (PushoverApiException ex) {
             if (strict) {
                 throw ex;
             }
             LOGGER.warn(
-                    "Skipping emergency callback/tags assertion due to API rejection (strict mode off): requestId={}, errors={}",
+                    "Skipping emergency receipt lifecycle assertion due to API rejection (strict mode off): requestId={}, errors={}",
                     ex.getRequestId(),
                     ex.getErrors()
             );
-            throw new org.opentest4j.TestAbortedException("Emergency callback/tags rejected by API and strict mode is disabled", ex);
+            throw new org.opentest4j.TestAbortedException("Emergency receipt lifecycle rejected by API and strict mode is disabled", ex);
         }
     }
 }

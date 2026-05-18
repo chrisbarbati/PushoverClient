@@ -7,6 +7,8 @@ import org.chrisbarbati.pushoverclient.exception.PushoverApiException;
 import org.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import org.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.SoundsResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ class PushoverClientHttpTest {
     private static final String TOKEN = "a12345678901234567890123456789";
     private static final String USER = "uQiRzpo4DXghDmr9QzzfQu27cmVRsG";
     private static final String ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    private static final String RECEIPT = "abcdefghijklmnopqrstuvwx123456";
 
     private MockWebServer server;
     private PushoverClient client;
@@ -179,6 +182,71 @@ class PushoverClientHttpTest {
     }
 
     /**
+     * Verifies receipt status endpoint parsing and authenticated GET construction.
+     *
+     * @throws Exception when request processing fails
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void getReceipt_parsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-r\",\"receipt\":\"" + RECEIPT
+                        + "\",\"acknowledged\":0,\"last_delivered_at\":1715799990,\"expired\":0,\"expires_at\":1715800300,\"called_back\":0}"));
+
+        ReceiptStatusResponse response = client.getReceipt(RECEIPT);
+
+        assertEquals(1, response.status());
+        assertEquals(RECEIPT, response.receipt());
+        assertEquals(1715799990L, response.lastDeliveredAt());
+        assertEquals(1715800300L, response.expiresAt());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertEquals("/1/receipts/" + RECEIPT + ".json?token=" + TOKEN, request.getPath());
+    }
+
+    /**
+     * Verifies receipt cancel endpoint posts only the authenticated token field.
+     *
+     * @throws Exception when request processing fails
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void cancelReceipt_postsFormEncodedToken() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-cancel\"}"));
+
+        ReceiptCancellationResponse response = client.cancelReceipt(RECEIPT);
+
+        assertEquals(1, response.status());
+        assertEquals("req-cancel", response.request());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/receipts/" + RECEIPT + "/cancel.json", request.getPath());
+        assertEquals("token=" + TOKEN, request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies cancel-by-tag encodes dynamic path segments and posts the token body.
+     *
+     * @throws Exception when request processing fails
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void cancelByTag_encodesTagPathAndPostsToken() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-tag\"}"));
+
+        ReceiptCancellationResponse response = client.cancelByTag("ops prod/blue");
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/receipts/cancel_by_tag/ops%20prod%2Fblue.json", request.getPath());
+        assertEquals("token=" + TOKEN, request.getBody().readUtf8());
+    }
+
+    /**
      * Verifies encrypted mode omits plaintext from transmitted request bodies.
      *
      * @throws Exception when request processing fails
@@ -245,6 +313,60 @@ class PushoverClientHttpTest {
         assertEquals(401, ex.getHttpStatus());
         assertEquals("req-auth", ex.getRequestId());
         assertTrue(ex.getErrors().contains("application token is invalid"));
+    }
+
+    /**
+     * Verifies receipt status failures map to {@link PushoverApiException}.
+     *
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void getReceipt_throwsApiExceptionOnFailureResponse() {
+        server.enqueue(new MockResponse().setResponseCode(404)
+                .setBody("{\"status\":0,\"request\":\"req-r-fail\",\"errors\":[\"receipt is invalid\"]}"));
+
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.getReceipt(RECEIPT));
+
+        assertEquals(404, ex.getHttpStatus());
+        assertEquals("req-r-fail", ex.getRequestId());
+        assertTrue(ex.getErrors().contains("receipt is invalid"));
+    }
+
+    /**
+     * Verifies receipt cancel failures map to {@link PushoverApiException}.
+     *
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void cancelReceipt_throwsApiExceptionOnFailureResponse() {
+        server.enqueue(new MockResponse().setResponseCode(400)
+                .setBody("{\"status\":0,\"request\":\"req-cancel-fail\",\"errors\":[\"receipt has already expired\"]}"));
+
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.cancelReceipt(RECEIPT));
+
+        assertEquals(400, ex.getHttpStatus());
+        assertEquals("req-cancel-fail", ex.getRequestId());
+        assertTrue(ex.getErrors().contains("receipt has already expired"));
+    }
+
+    /**
+     * Verifies cancel-by-tag failures map to {@link PushoverApiException}.
+     *
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void cancelByTag_throwsApiExceptionOnFailureResponse() {
+        server.enqueue(new MockResponse().setResponseCode(400)
+                .setBody("{\"status\":0,\"request\":\"req-tag-fail\",\"errors\":[\"tag is invalid\"]}"));
+
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.cancelByTag("team-blue"));
+
+        assertEquals(400, ex.getHttpStatus());
+        assertEquals("req-tag-fail", ex.getRequestId());
+        assertTrue(ex.getErrors().contains("tag is invalid"));
     }
 }
 

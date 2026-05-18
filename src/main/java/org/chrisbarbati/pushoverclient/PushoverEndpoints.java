@@ -13,6 +13,10 @@ final class PushoverEndpoints {
     static final String SOUNDS = "/1/sounds.json";
     /** Limits endpoint for monthly quota usage. */
     static final String LIMITS = "/1/apps/limits.json";
+    /** Receipt endpoint prefix for emergency notification lifecycle calls. */
+    static final String RECEIPTS = "/1/receipts";
+    /** Cancel-by-tag endpoint prefix for emergency notification lifecycle calls. */
+    static final String CANCEL_BY_TAG = "/1/receipts/cancel_by_tag";
 
     /**
      * Utility class.

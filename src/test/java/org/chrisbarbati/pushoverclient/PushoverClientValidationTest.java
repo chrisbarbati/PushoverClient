@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class PushoverClientValidationTest {
     private static final String TOKEN = "a12345678901234567890123456789";
     private static final String USER = "uQiRzpo4DXghDmr9QzzfQu27cmVRsG";
+    private static final String INVALID_RECEIPT = "too-short";
 
     /**
      * Verifies mutually exclusive formatting flags are rejected.
@@ -67,6 +68,45 @@ class PushoverClientValidationTest {
                 .build();
 
         assertThrows(PushoverClientException.class, () -> client.sendMessage(request));
+    }
+
+    /**
+     * Verifies blank receipt ids are rejected before receipt lookup network calls.
+     *
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void getReceipt_rejectsBlankReceiptId() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.getReceipt("   "));
+    }
+
+    /**
+     * Verifies malformed receipt ids are rejected before cancellation network calls.
+     *
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void cancelReceipt_rejectsMalformedReceiptId() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.cancelReceipt(INVALID_RECEIPT));
+    }
+
+    /**
+     * Verifies blank tags are rejected before cancel-by-tag network calls.
+     *
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    @Test
+    void cancelByTag_rejectsBlankTag() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.cancelByTag("   "));
     }
 }
 

@@ -11,6 +11,8 @@ import org.chrisbarbati.pushoverclient.model.LimitsResponse;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.SoundsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +37,7 @@ import java.util.regex.Pattern;
 /**
  * Minimal Java client for core Pushover REST endpoints.
  *
- * @apiNote This client currently targets messages, sounds, and app limits endpoints.
+ * @apiNote This client currently targets messages, receipts, sounds, and app limits endpoints.
  * @implNote Validation follows documented Pushover API constraints before HTTP submission.
  * @since 0.1.0
  * @author Christian Barbati
@@ -46,6 +48,8 @@ public class PushoverClient {
 
     // Pushover user/group keys are 30 alphanumeric chars; up to 50 can be sent comma-separated.
     private static final Pattern IDENTIFIER_LIST = Pattern.compile("^[A-Za-z0-9]{30}(,[A-Za-z0-9]{30}){0,49}$");
+    // Emergency receipt ids are 30 alphanumeric chars in API responses and follow-up endpoints.
+    private static final Pattern RECEIPT_ID = Pattern.compile("^[A-Za-z0-9]{30}$");
     // Device names support [A-Za-z0-9_-] and max length 25 per documented API limits.
     private static final Pattern DEVICE_LIST = Pattern.compile("^[A-Za-z0-9_-]{1,25}(,[A-Za-z0-9_-]{1,25})*$");
 
@@ -135,8 +139,7 @@ public class PushoverClient {
             httpRequest = buildFormRequest(PushoverEndpoints.SEND_MESSAGE, fields);
         }
 
-        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        return parseResponse(response, MessageResponse.class);
+        return send(httpRequest, MessageResponse.class);
     }
 
     /**
@@ -151,13 +154,7 @@ public class PushoverClient {
      */
     public SoundsResponse getSounds() throws IOException, InterruptedException {
         LOGGER.debug("Fetching sounds from endpoint={}", PushoverEndpoints.SOUNDS);
-        HttpRequest request = HttpRequest.newBuilder(buildUri(PushoverEndpoints.SOUNDS + "?token=" + encode(appToken)))
-                .header("Accept", "application/json")
-                .GET()
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        return parseResponse(response, SoundsResponse.class);
+        return getJson(PushoverEndpoints.SOUNDS, SoundsResponse.class);
     }
 
     /**
@@ -172,13 +169,69 @@ public class PushoverClient {
      */
     public LimitsResponse getLimits() throws IOException, InterruptedException {
         LOGGER.debug("Fetching limits from endpoint={}", PushoverEndpoints.LIMITS);
-        HttpRequest request = HttpRequest.newBuilder(buildUri(PushoverEndpoints.LIMITS + "?token=" + encode(appToken)))
-                .header("Accept", "application/json")
-                .GET()
-                .build();
+        return getJson(PushoverEndpoints.LIMITS, LimitsResponse.class);
+    }
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        return parseResponse(response, LimitsResponse.class);
+    /**
+     * Fetches emergency receipt status from {@code /1/receipts/{receipt}.json}.
+     *
+     * @param receiptId emergency receipt id returned by {@link #sendMessage(MessageRequest)}
+     * @return parsed receipt status response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the receipt id is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    public ReceiptStatusResponse getReceipt(String receiptId) throws IOException, InterruptedException {
+        String normalizedReceiptId = requireReceiptId(receiptId);
+        LOGGER.debug("Fetching receipt status: endpoint={}, receiptId={}", PushoverEndpoints.RECEIPTS, normalizedReceiptId);
+        return getJson(PushoverEndpoints.RECEIPTS + "/" + encodePathSegment(normalizedReceiptId) + ".json", ReceiptStatusResponse.class);
+    }
+
+    /**
+     * Cancels an emergency receipt via {@code /1/receipts/{receipt}/cancel.json}.
+     *
+     * @param receiptId emergency receipt id returned by {@link #sendMessage(MessageRequest)}
+     * @return parsed receipt cancellation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the receipt id is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    public ReceiptCancellationResponse cancelReceipt(String receiptId) throws IOException, InterruptedException {
+        String normalizedReceiptId = requireReceiptId(receiptId);
+        LOGGER.debug("Cancelling receipt: endpoint={}, receiptId={}", PushoverEndpoints.RECEIPTS, normalizedReceiptId);
+        return postForm(
+                PushoverEndpoints.RECEIPTS + "/" + encodePathSegment(normalizedReceiptId) + "/cancel.json",
+                Map.of(),
+                ReceiptCancellationResponse.class
+        );
+    }
+
+    /**
+     * Cancels outstanding emergency receipts associated with a tag via {@code /1/receipts/cancel_by_tag/{tag}.json}.
+     *
+     * @param tag message tag to cancel
+     * @return parsed receipt cancellation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the tag is blank
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    public ReceiptCancellationResponse cancelByTag(String tag) throws IOException, InterruptedException {
+        String normalizedTag = requireTag(tag);
+        LOGGER.debug("Cancelling receipts by tag: endpoint={}, tag={}", PushoverEndpoints.CANCEL_BY_TAG, normalizedTag);
+        return postForm(
+                PushoverEndpoints.CANCEL_BY_TAG + "/" + encodePathSegment(normalizedTag) + ".json",
+                Map.of(),
+                ReceiptCancellationResponse.class
+        );
     }
 
     /**
@@ -315,6 +368,63 @@ public class PushoverClient {
     }
 
     /**
+     * Executes a GET request with application token authentication.
+     *
+     * @param path endpoint path without query string
+     * @param responseType expected success payload type
+     * @param <T> success payload type
+     * @return parsed success response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private <T> T getJson(String path, Class<T> responseType) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(buildUri(path + "?token=" + encode(appToken)))
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+        return send(request, responseType);
+    }
+
+    /**
+     * Executes a form-encoded POST request with application token authentication.
+     *
+     * @param path endpoint path
+     * @param fields additional form fields excluding the application token
+     * @param responseType expected success payload type
+     * @param <T> success payload type
+     * @return parsed success response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private <T> T postForm(String path, Map<String, String> fields, Class<T> responseType) throws IOException, InterruptedException {
+        Map<String, String> requestFields = new LinkedHashMap<>();
+        requestFields.put("token", appToken);
+        requestFields.putAll(fields);
+        return send(buildFormRequest(path, requestFields), responseType);
+    }
+
+    /**
+     * Sends an HTTP request and parses its JSON response.
+     *
+     * @param httpRequest prepared request
+     * @param responseType expected success payload type
+     * @param <T> success payload type
+     * @return parsed success response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private <T> T send(HttpRequest httpRequest, Class<T> responseType) throws IOException, InterruptedException {
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        return parseResponse(response, responseType);
+    }
+
+    /**
      * Parses successful responses and maps error payloads to {@link PushoverApiException}.
      *
      * @param response raw HTTP response
@@ -330,25 +440,19 @@ public class PushoverClient {
         try {
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 T value = objectMapper.readValue(response.body(), responseType);
-                // Messages endpoint uses status=1 in JSON body to indicate acceptance.
-                if (value instanceof MessageResponse msg && msg.status() != 1) {
+                Integer status = extractStatus(value);
+                String requestId = extractRequestId(value);
+                if (status != null && status != 1) {
                     LOGGER.warn(
-                            "API returned non-success message status despite HTTP success: httpStatus={}, requestId={}",
+                            "API returned non-success status despite HTTP success: responseType={}, httpStatus={}, requestId={}",
+                            responseType.getSimpleName(),
                             response.statusCode(),
-                            msg.request()
+                            requestId
                     );
-                    throw new PushoverApiException("Pushover API reported failure", response.statusCode(), msg.request(), List.of("status != 1"));
+                    throw new PushoverApiException("Pushover API reported failure", response.statusCode(), requestId, List.of("status != 1"));
                 }
 
                 if (LOGGER.isDebugEnabled()) {
-                    String requestId = null;
-                    if (value instanceof MessageResponse msg) {
-                        requestId = msg.request();
-                    } else if (value instanceof SoundsResponse sounds) {
-                        requestId = sounds.request();
-                    } else if (value instanceof LimitsResponse limits) {
-                        requestId = limits.request();
-                    }
                     LOGGER.debug("API call succeeded: responseType={}, httpStatus={}, requestId={}",
                             responseType.getSimpleName(), response.statusCode(), requestId);
                 }
@@ -373,6 +477,60 @@ public class PushoverClient {
             LOGGER.warn("Failed to parse API response: responseType={}, httpStatus={}", responseType.getSimpleName(), response.statusCode());
             throw new PushoverClientException("Failed to parse API response", ex);
         }
+    }
+
+    /**
+     * Extracts the common API status field from known success payloads.
+     *
+     * @param value parsed success payload
+     * @return status when available, otherwise null
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private static Integer extractStatus(Object value) {
+        if (value instanceof MessageResponse messageResponse) {
+            return messageResponse.status();
+        }
+        if (value instanceof SoundsResponse soundsResponse) {
+            return soundsResponse.status();
+        }
+        if (value instanceof LimitsResponse limitsResponse) {
+            return limitsResponse.status();
+        }
+        if (value instanceof ReceiptStatusResponse receiptStatusResponse) {
+            return receiptStatusResponse.status();
+        }
+        if (value instanceof ReceiptCancellationResponse receiptCancellationResponse) {
+            return receiptCancellationResponse.status();
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the common API request id field from known success payloads.
+     *
+     * @param value parsed success payload
+     * @return request id when available, otherwise null
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private static String extractRequestId(Object value) {
+        if (value instanceof MessageResponse messageResponse) {
+            return messageResponse.request();
+        }
+        if (value instanceof SoundsResponse soundsResponse) {
+            return soundsResponse.request();
+        }
+        if (value instanceof LimitsResponse limitsResponse) {
+            return limitsResponse.request();
+        }
+        if (value instanceof ReceiptStatusResponse receiptStatusResponse) {
+            return receiptStatusResponse.request();
+        }
+        if (value instanceof ReceiptCancellationResponse receiptCancellationResponse) {
+            return receiptCancellationResponse.request();
+        }
+        return null;
     }
 
     /**
@@ -542,6 +700,36 @@ public class PushoverClient {
     }
 
     /**
+     * Validates and normalizes a receipt id used in path parameters.
+     *
+     * @param receiptId candidate receipt id
+     * @return normalized receipt id
+     * @throws PushoverClientException when the receipt id is blank or malformed
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private static String requireReceiptId(String receiptId) {
+        String normalized = requireNonBlank(receiptId, "receiptId is required").trim();
+        if (!RECEIPT_ID.matcher(normalized).matches()) {
+            throw new PushoverClientException("receiptId must be a 30-character alphanumeric identifier");
+        }
+        return normalized;
+    }
+
+    /**
+     * Validates and normalizes a tag used in path parameters.
+     *
+     * @param tag candidate tag value
+     * @return normalized tag
+     * @throws PushoverClientException when the tag is blank
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private static String requireTag(String tag) {
+        return requireNonBlank(tag, "tag is required").trim();
+    }
+
+    /**
      * Checks whether a string is null/blank.
      *
      * @param value input string
@@ -563,5 +751,17 @@ public class PushoverClient {
      */
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Percent-encodes a single path segment for dynamic endpoint usage.
+     *
+     * @param value unescaped path segment
+     * @return encoded path segment
+     * @since 0.2.0
+     * @author Christian Barbati
+     */
+    private static String encodePathSegment(String value) {
+        return encode(value).replace("+", "%20");
     }
 }

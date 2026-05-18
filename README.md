@@ -7,8 +7,12 @@ Java client for the Pushover REST API.
 - Send messages via `/1/messages.json`, including optional fields and parameters
 - Support attachments as multipart binary (`attachment`) and Base64 (`attachment_base64`)
 - Support end-to-end encryption for `message`, `title`, `url`, and `url_title`
+- Query emergency receipts via `/1/receipts/{receipt}.json`
+- Cancel emergency receipts directly or by tag
 - Retrieve available sounds via `/1/sounds.json`
 - Retrieve usage limits via `/1/apps/limits.json`
+
+See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
 ## Quick run
 
@@ -42,10 +46,10 @@ Run integration tests (optional):
 3. For optional field coverage tests, optionally set:
    - `pushover.device`
    - `pushover.sound`
-4. For emergency callback/tags live test (opt-in), set:
+4. For the combined emergency receipt lifecycle live test (opt-in), set:
    - `pushover.enableEmergencyTests=true`
-   - `pushover.callbackUrl` (publicly reachable URL, including scheme like `https://...`)
-   - `pushover.tags` (optional; defaults to `pushoverclient-it`)
+   - `pushover.callbackUrl` (optional; use a real publicly reachable URL to include callback submission in the lifecycle flow)
+   - `pushover.tags` (optional single base tag; defaults to `pushoverclient-it`)
    - `pushover.strictEmergencyTest=true` to fail build when API rejects callback/tags (default behavior is skip)
 5. For intentional live failure testing, optionally set:
    - `pushover.invalidUserKey` (30 alphanumeric chars)
@@ -66,19 +70,76 @@ Current integration coverage includes:
 - device/sound/timestamp optional fields
 - multipart attachment send
 - base64 attachment send
-- emergency callback/tags (opt-in)
+- emergency receipt lookup and cancellation lifecycle (opt-in)
 - intentional live failures (invalid user and invalid token)
 
 ## Programmatic usage
 
 ```java
-PushoverClient client = new PushoverClient(appToken, encryptionHexKey);
+import java.io.IOException;
 
-MessageRequest request = MessageRequest.builder(userKey, "Backup completed")
-        .title("DB Job")
-        .priority(MessagePriority.NORMAL)
-        .build();
+import org.chrisbarbati.pushoverclient.PushoverClient;
+import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
 
-MessageResponse response = client.sendMessage(request);
+public final class SendMessageExample {
+    private SendMessageExample() {
+    }
+
+    public static MessageResponse send(String appToken, String userKey, String encryptionHexKey)
+            throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken, encryptionHexKey);
+
+        MessageRequest request = MessageRequest.builder(userKey, "Backup completed")
+                .title("DB Job")
+                .priority(MessagePriority.NORMAL)
+                .build();
+
+        return client.sendMessage(request);
+    }
+}
+```
+
+Receipt follow-up for emergency notifications:
+
+```java
+import java.io.IOException;
+
+import org.chrisbarbati.pushoverclient.PushoverClient;
+import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
+
+public final class EmergencyReceiptExample {
+    private EmergencyReceiptExample() {
+    }
+
+    public static ReceiptStatusResponse sendAndManageReceipt(
+            String appToken,
+            String userKey,
+            String encryptionHexKey
+    ) throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken, encryptionHexKey);
+
+        MessageResponse response = client.sendMessage(MessageRequest.builder(userKey, "Database unavailable")
+                .priority(MessagePriority.EMERGENCY)
+                .retry(30)
+                .expire(300)
+                .callback("https://example.com/pushover/callback")
+                .tags("ops-db")
+                .build());
+
+        ReceiptStatusResponse receipt = client.getReceipt(response.receipt());
+        ReceiptCancellationResponse cancelByReceipt = client.cancelReceipt(response.receipt());
+        ReceiptCancellationResponse cancelByTag = client.cancelByTag("ops-db");
+
+        System.out.println(cancelByReceipt.request());
+        System.out.println(cancelByTag.request());
+        return receipt;
+    }
+}
 ```
 
