@@ -2,6 +2,18 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.3.0] - 2026-05-19
+
+### Added
+- Async emergency receipt polling via `sendEmergencyMessageAndAwaitAcknowledgement(...)`
+- Async emergency callback handling via `sendEmergencyMessageAndAwaitCallback(...)`
+- Constructor-level `AsyncReceiptProperties` for polling interval, future expiration defaults, default callback URL, and callback-conflict warning control
+- `CallbackServer` abstraction with initial `JettyCallbackServer` implementation
+- Callback payload model for form-encoded Pushover callback POST bodies
+- Pending-future cleanup on success, expiration, cancellation, and error paths
+- Unit coverage for async polling, callback delivery, callback override behavior, timeout overrides, and cancellation cleanup
+- Separate opt-in live integration tests for interactive async polling and callback acknowledgement flows
+
 ## [0.2.0] - 2026-05-17
 
 ### Added

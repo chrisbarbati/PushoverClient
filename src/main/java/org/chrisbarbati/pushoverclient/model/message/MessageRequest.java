@@ -235,6 +235,34 @@ public final class MessageRequest {
     }
 
     /**
+     * Creates a builder pre-populated with this request's values.
+     *
+     * @return builder initialized from this request
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    public Builder toBuilder() {
+        return builder(user, message)
+                .device(device)
+                .title(title)
+                .url(url)
+                .urlTitle(urlTitle)
+                .priority(priority)
+                .sound(sound)
+                .callback(callback)
+                .tags(tags)
+                .attachment(attachment)
+                .encrypted(encrypted)
+                .timestamp(timestamp == null ? 0L : timestamp)
+                .ttl(ttl == null ? 0 : ttl)
+                .retry(retry == null ? 0 : retry)
+                .expire(expire == null ? 0 : expire)
+                .html(html != null && html == 1)
+                .monospace(monospace != null && monospace == 1)
+                .clearUnsetOptionalNumbers(timestamp, ttl, retry, expire);
+    }
+
+    /**
      * Fluent builder for optional Pushover parameters.
      *
      * @implNote Builder performs no network-level validation; use PushoverClient to validate.
@@ -479,6 +507,22 @@ public final class MessageRequest {
          */
         public Builder encrypted(boolean encrypted) {
             this.encrypted = encrypted;
+            return this;
+        }
+
+        private Builder clearUnsetOptionalNumbers(Long timestamp, Integer ttl, Integer retry, Integer expire) {
+            if (timestamp == null) {
+                this.timestamp = null;
+            }
+            if (ttl == null) {
+                this.ttl = null;
+            }
+            if (retry == null) {
+                this.retry = null;
+            }
+            if (expire == null) {
+                this.expire = null;
+            }
             return this;
         }
 

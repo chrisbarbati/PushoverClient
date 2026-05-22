@@ -72,5 +72,34 @@ class MessageRequestBuilderTest {
         assertArrayEquals(new byte[]{1, 2, 3}, request.attachment().data());
         assertTrue(request.encrypted());
     }
+
+    /**
+     * Verifies {@code toBuilder()} preserves existing values while allowing targeted overrides.
+     *
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    @Test
+    void toBuilder_copiesExistingValues() {
+        MessageRequest original = MessageRequest.builder("uQiRzpo4DXghDmr9QzzfQu27cmVRsG", "hello")
+                .title("original")
+                .priority(MessagePriority.EMERGENCY)
+                .retry(30)
+                .expire(300)
+                .callback("https://example.com/original")
+                .build();
+
+        MessageRequest copied = original.toBuilder()
+                .callback("https://example.com/override")
+                .build();
+
+        assertEquals(original.user(), copied.user());
+        assertEquals(original.message(), copied.message());
+        assertEquals(original.title(), copied.title());
+        assertEquals(original.priority(), copied.priority());
+        assertEquals(original.retry(), copied.retry());
+        assertEquals(original.expire(), copied.expire());
+        assertEquals("https://example.com/override", copied.callback());
+    }
 }
 

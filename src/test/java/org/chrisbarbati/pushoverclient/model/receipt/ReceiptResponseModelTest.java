@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.Map;
 
 /**
  * Unit tests for receipt response model deserialization.
@@ -96,6 +99,57 @@ class ReceiptResponseModelTest {
         assertNull(response.lastDeliveredAt());
         assertNull(response.expiresAt());
         assertNull(response.calledBackAt());
+    }
+
+    /**
+     * Verifies callback POST form fields map onto the typed callback response model.
+     *
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    @Test
+    void receiptCallbackResponse_fromFields_mapsTypedValues() {
+        ReceiptCallbackResponse response = ReceiptCallbackResponse.fromFields(Map.of(
+                "receipt", "abcdefghijklmnopqrstuvwx123456",
+                "acknowledged", "1",
+                "acknowledged_at", "1715800000",
+                "acknowledged_by", "chris",
+                "acknowledged_by_device", "pixel"
+        ));
+
+        assertEquals("abcdefghijklmnopqrstuvwx123456", response.receipt());
+        assertEquals(1, response.acknowledged());
+        assertEquals(1715800000L, response.acknowledgedAt());
+        assertEquals("chris", response.acknowledgedBy());
+        assertEquals("pixel", response.acknowledgedByDevice());
+    }
+
+    /**
+     * Verifies alternate receipt field names can still be mapped from callback POST payloads.
+     *
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    @Test
+    void receiptCallbackResponse_fromFields_acceptsAlternateReceiptKey() {
+        ReceiptCallbackResponse response = ReceiptCallbackResponse.fromFields(Map.of(
+                "receipt_id", "abcdefghijklmnopqrstuvwx123456",
+                "acknowledged", "1"
+        ));
+
+        assertEquals("abcdefghijklmnopqrstuvwx123456", response.receipt());
+        assertEquals(1, response.acknowledged());
+    }
+
+    /**
+     * Verifies malformed callback payloads fail fast when the required receipt field is absent.
+     *
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    @Test
+    void receiptCallbackResponse_fromFields_requiresReceipt() {
+        assertThrows(RuntimeException.class, () -> ReceiptCallbackResponse.fromFields(Map.of("acknowledged", "1")));
     }
 }
 

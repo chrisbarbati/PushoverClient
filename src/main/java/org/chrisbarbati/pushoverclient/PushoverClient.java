@@ -1,6 +1,8 @@
 package org.chrisbarbati.pushoverclient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import org.chrisbarbati.pushoverclient.callback.CallbackServer;
 import org.chrisbarbati.pushoverclient.crypto.E2eeEncryptor;
 import org.chrisbarbati.pushoverclient.exception.PushoverApiException;
 import org.chrisbarbati.pushoverclient.exception.PushoverClientException;
@@ -11,6 +13,7 @@ import org.chrisbarbati.pushoverclient.model.LimitsResponse;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.SoundsResponse;
@@ -25,13 +28,24 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 /**
@@ -59,6 +73,10 @@ public class PushoverClient {
     private final ObjectMapper objectMapper;
     private final E2eeEncryptor encryptor;
     private final String baseUrl;
+    private final AsyncReceiptProperties asyncReceiptProperties;
+    private final CallbackServer callbackServer;
+    private final ConcurrentMap<String, PendingReceiptFuture<ReceiptStatusResponse>> pendingPollFutures;
+    private final ConcurrentMap<String, PendingReceiptFuture<ReceiptCallbackResponse>> pendingCallbackFutures;
 
     /**
      * Creates a client without end-to-end encryption.
@@ -94,12 +112,39 @@ public class PushoverClient {
      * @author Christian Barbati
      */
     public PushoverClient(String appToken, String encryptionKey, HttpClient httpClient, String baseUrl) {
+        this(appToken, encryptionKey, httpClient, baseUrl, null, null);
+    }
+
+    /**
+     * Creates a client with explicit transport, base URL, and async receipt support.
+     *
+     * @param appToken application API token
+     * @param encryptionKey optional 64-char hex key for encrypted messages
+     * @param httpClient HTTP transport implementation
+     * @param baseUrl API base URL
+     * @param asyncReceiptProperties async polling/callback defaults; when null, library defaults are used
+     * @param callbackServer callback server implementation used by callback-based futures
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    public PushoverClient(
+            String appToken,
+            String encryptionKey,
+            HttpClient httpClient,
+            String baseUrl,
+            AsyncReceiptProperties asyncReceiptProperties,
+            CallbackServer callbackServer
+    ) {
         this.appToken = requireNonBlank(appToken, "appToken is required");
         this.encryptionKey = isBlank(encryptionKey) ? null : encryptionKey;
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient is required");
         this.baseUrl = requireNonBlank(baseUrl, "baseUrl is required");
         this.objectMapper = new ObjectMapper();
         this.encryptor = new E2eeEncryptor();
+        this.asyncReceiptProperties = asyncReceiptProperties == null ? AsyncReceiptProperties.defaults() : asyncReceiptProperties;
+        this.callbackServer = callbackServer;
+        this.pendingPollFutures = new ConcurrentHashMap<>();
+        this.pendingCallbackFutures = new ConcurrentHashMap<>();
     }
 
     /**
@@ -140,6 +185,109 @@ public class PushoverClient {
         }
 
         return send(httpRequest, MessageResponse.class);
+    }
+
+    /**
+     * Sends an emergency message and polls the receipts endpoint until acknowledgement.
+     *
+     * @param request emergency message request
+     * @param executorService caller-managed executor used for async work
+     * @return future completing with the acknowledged receipt payload
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    public CompletableFuture<ReceiptStatusResponse> sendEmergencyMessageAndAwaitAcknowledgement(
+            MessageRequest request,
+            ExecutorService executorService
+    ) {
+        return sendEmergencyMessageAndAwaitAcknowledgement(request, executorService, asyncReceiptProperties.pollFutureExpiration());
+    }
+
+    /**
+     * Sends an emergency message and polls the receipts endpoint until acknowledgement.
+     *
+     * @param request emergency message request
+     * @param executorService caller-managed executor used for async work
+     * @param futureExpiration override expiration for the returned future
+     * @return future completing with the acknowledged receipt payload
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    public CompletableFuture<ReceiptStatusResponse> sendEmergencyMessageAndAwaitAcknowledgement(
+            MessageRequest request,
+            ExecutorService executorService,
+            Duration futureExpiration
+    ) {
+        MessageRequest emergencyRequest = requireEmergencyRequest(request, "sendEmergencyMessageAndAwaitAcknowledgement");
+        ExecutorService executor = Objects.requireNonNull(executorService, "executorService is required");
+        Duration expiration = resolveFutureExpiration(
+                futureExpiration,
+                asyncReceiptProperties.pollFutureExpiration(),
+                AsyncReceiptProperties.POLL_FUTURE_EXPIRATION_PROPERTY
+        );
+
+        CompletableFuture<ReceiptStatusResponse> future = new CompletableFuture<>();
+        submitAsyncTask(executor, future, () -> {
+            MessageResponse response = sendMessage(emergencyRequest);
+            String receiptId = requireAsyncReceipt(response);
+            registerPendingFuture(pendingPollFutures, receiptId, future, parseTags(emergencyRequest.tags()));
+            pollReceiptUntilTerminal(receiptId, future, expiration);
+        });
+        return future;
+    }
+
+    /**
+     * Sends an emergency message and completes the future when the configured callback server receives Pushover's POST.
+     *
+     * @param request emergency message request
+     * @param executorService caller-managed executor used for async work
+     * @return future completing with the callback payload
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    public CompletableFuture<ReceiptCallbackResponse> sendEmergencyMessageAndAwaitCallback(
+            MessageRequest request,
+            ExecutorService executorService
+    ) {
+        return sendEmergencyMessageAndAwaitCallback(request, executorService, asyncReceiptProperties.callbackFutureExpiration());
+    }
+
+    /**
+     * Sends an emergency message and completes the future when the configured callback server receives Pushover's POST.
+     *
+     * @param request emergency message request
+     * @param executorService caller-managed executor used for async work
+     * @param futureExpiration override expiration for the returned future
+     * @return future completing with the callback payload
+     * @since 0.3.0
+     * @author Christian Barbati
+     */
+    public CompletableFuture<ReceiptCallbackResponse> sendEmergencyMessageAndAwaitCallback(
+            MessageRequest request,
+            ExecutorService executorService,
+            Duration futureExpiration
+    ) {
+        if (callbackServer == null) {
+            throw new PushoverClientException("A callbackServer is required for callback-based asynchronous receipt handling");
+        }
+        MessageRequest emergencyRequest = requireEmergencyRequest(request, "sendEmergencyMessageAndAwaitCallback");
+        ExecutorService executor = Objects.requireNonNull(executorService, "executorService is required");
+        Duration expiration = resolveFutureExpiration(
+                futureExpiration,
+                asyncReceiptProperties.callbackFutureExpiration(),
+                AsyncReceiptProperties.CALLBACK_FUTURE_EXPIRATION_PROPERTY
+        );
+
+        CompletableFuture<ReceiptCallbackResponse> future = new CompletableFuture<>();
+        submitAsyncTask(executor, future, () -> {
+            ensureCallbackServerStarted();
+            MessageRequest callbackRequest = withResolvedCallback(emergencyRequest);
+            MessageResponse response = sendMessage(callbackRequest);
+            String receiptId = requireAsyncReceipt(response);
+            registerPendingFuture(pendingCallbackFutures, receiptId, future, parseTags(callbackRequest.tags()));
+            monitorFutureExpiration(receiptId, future, expiration, executor, pendingCallbackFutures, "callback");
+        });
+        return future;
     }
 
     /**
@@ -205,11 +353,13 @@ public class PushoverClient {
     public ReceiptCancellationResponse cancelReceipt(String receiptId) throws IOException, InterruptedException {
         String normalizedReceiptId = requireReceiptId(receiptId);
         LOGGER.debug("Cancelling receipt: endpoint={}, receiptId={}", PushoverEndpoints.RECEIPTS, normalizedReceiptId);
-        return postForm(
+        ReceiptCancellationResponse response = postForm(
                 PushoverEndpoints.RECEIPTS + "/" + encodePathSegment(normalizedReceiptId) + "/cancel.json",
                 Map.of(),
                 ReceiptCancellationResponse.class
         );
+        cancelPendingReceipt(normalizedReceiptId);
+        return response;
     }
 
     /**
@@ -227,11 +377,13 @@ public class PushoverClient {
     public ReceiptCancellationResponse cancelByTag(String tag) throws IOException, InterruptedException {
         String normalizedTag = requireTag(tag);
         LOGGER.debug("Cancelling receipts by tag: endpoint={}, tag={}", PushoverEndpoints.CANCEL_BY_TAG, normalizedTag);
-        return postForm(
+        ReceiptCancellationResponse response = postForm(
                 PushoverEndpoints.CANCEL_BY_TAG + "/" + encodePathSegment(normalizedTag) + ".json",
                 Map.of(),
                 ReceiptCancellationResponse.class
         );
+        cancelPendingReceiptsByTag(normalizedTag);
+        return response;
     }
 
     /**
@@ -533,6 +685,214 @@ public class PushoverClient {
         return null;
     }
 
+    private MessageRequest requireEmergencyRequest(MessageRequest request, String methodName) {
+        Objects.requireNonNull(request, "request is required");
+        if (request.priority() != MessagePriority.EMERGENCY) {
+            throw new PushoverClientException(methodName + " requires priority=EMERGENCY");
+        }
+        validate(request);
+        return request;
+    }
+
+    private Duration resolveFutureExpiration(Duration override, Duration configuredDefault, String propertyName) {
+        Duration resolved = override == null ? configuredDefault : override;
+        if (resolved == null || resolved.isZero() || resolved.isNegative()) {
+            throw new PushoverClientException(propertyName + " must be a positive duration");
+        }
+        return resolved;
+    }
+
+    private void submitAsyncTask(ExecutorService executor, CompletableFuture<?> future, InterruptibleTask task) {
+        try {
+            executor.submit(() -> {
+                try {
+                    task.run();
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    future.completeExceptionally(ex);
+                } catch (CancellationException ex) {
+                    future.cancel(false);
+                } catch (Exception ex) {
+                    future.completeExceptionally(ex);
+                }
+            });
+        } catch (RejectedExecutionException ex) {
+            future.completeExceptionally(ex);
+        }
+    }
+
+    private void pollReceiptUntilTerminal(
+            String receiptId,
+            CompletableFuture<ReceiptStatusResponse> future,
+            Duration futureExpiration
+    ) throws IOException, InterruptedException {
+        long startedAt = System.nanoTime();
+        while (!future.isDone()) {
+            if (hasExpired(startedAt, futureExpiration)) {
+                future.completeExceptionally(new TimeoutException("Polling future expired before acknowledgement for receipt " + receiptId));
+                return;
+            }
+
+            ReceiptStatusResponse response = getReceipt(receiptId);
+            if (response.acknowledged() == 1) {
+                future.complete(response);
+                return;
+            }
+            if (response.expired() == 1) {
+                future.completeExceptionally(new PushoverClientException("Receipt expired before acknowledgement for receipt " + receiptId));
+                return;
+            }
+
+            sleep(asyncReceiptProperties.pollInterval());
+        }
+    }
+
+    private void monitorFutureExpiration(
+            String receiptId,
+            CompletableFuture<?> future,
+            Duration futureExpiration,
+            ExecutorService executor,
+            ConcurrentMap<String, ? extends PendingReceiptFuture<?>> pendingFutures,
+            String futureType
+    ) {
+        submitAsyncTask(executor, future, () -> {
+            long startedAt = System.nanoTime();
+            while (!future.isDone()) {
+                if (hasExpired(startedAt, futureExpiration)) {
+                    pendingFutures.remove(receiptId);
+                    future.completeExceptionally(new TimeoutException(
+                            "The " + futureType + " future expired before completion for receipt " + receiptId
+                    ));
+                    return;
+                }
+                sleep(asyncReceiptProperties.pollInterval());
+            }
+        });
+    }
+
+    private synchronized void ensureCallbackServerStarted() throws Exception {
+        if (callbackServer == null) {
+            throw new PushoverClientException("A callbackServer is required for callback-based asynchronous receipt handling");
+        }
+        if (!callbackServer.isRunning()) {
+            callbackServer.start(this::handleCallbackReceipt);
+        }
+    }
+
+    private MessageRequest withResolvedCallback(MessageRequest request) {
+        String defaultCallback = asyncReceiptProperties.defaultCallbackUrl();
+        String providedCallback = normalizeBlank(request.callback());
+        String effectiveCallback;
+
+        if (!isBlank(providedCallback)) {
+            if (!isBlank(defaultCallback)
+                    && !providedCallback.equals(defaultCallback)
+                    && asyncReceiptProperties.warnOnConflictingCallback()) {
+                LOGGER.warn(
+                        "Provided callback {} conflicts with default callback {}. Using the provided callback. This warning log can be disabled via property {}",
+                        providedCallback,
+                        defaultCallback,
+                        AsyncReceiptProperties.WARN_ON_CONFLICTING_CALLBACK_PROPERTY
+                );
+            }
+            effectiveCallback = providedCallback;
+        } else if (!isBlank(defaultCallback)) {
+            effectiveCallback = defaultCallback;
+        } else if (callbackServer != null && callbackServer.callbackUri() != null) {
+            effectiveCallback = callbackServer.callbackUri().toString();
+        } else {
+            throw new PushoverClientException(
+                    "A callback URL is required for callback-based asynchronous receipt handling; configure "
+                            + AsyncReceiptProperties.DEFAULT_CALLBACK_URL_PROPERTY
+                            + " or provide request.callback()"
+            );
+        }
+
+        if (effectiveCallback.equals(normalizeBlank(request.callback()))) {
+            return request;
+        }
+        return request.toBuilder().callback(effectiveCallback).build();
+    }
+
+    private void handleCallbackReceipt(ReceiptCallbackResponse callbackResponse) {
+        String receiptId = requireReceiptId(callbackResponse.receipt());
+        PendingReceiptFuture<ReceiptCallbackResponse> pending = pendingCallbackFutures.get(receiptId);
+        if (pending == null) {
+            LOGGER.debug("Ignoring callback for receipt {} because no pending callback future is registered", receiptId);
+            return;
+        }
+        pending.future().complete(callbackResponse);
+    }
+
+    private String requireAsyncReceipt(MessageResponse response) {
+        if (response == null || isBlank(response.receipt())) {
+            throw new PushoverClientException("Emergency notification response did not include a receipt");
+        }
+        return requireReceiptId(response.receipt());
+    }
+
+    private <T> void registerPendingFuture(
+            ConcurrentMap<String, PendingReceiptFuture<T>> pendingFutures,
+            String receiptId,
+            CompletableFuture<T> future,
+            Set<String> tags
+    ) {
+        PendingReceiptFuture<T> pendingFuture = new PendingReceiptFuture<>(future, tags);
+        future.whenComplete((ignored, throwable) -> pendingFutures.remove(receiptId, pendingFuture));
+        pendingFutures.put(receiptId, pendingFuture);
+    }
+
+    private void cancelPendingReceipt(String receiptId) {
+        cancelPendingFuture(pendingPollFutures.remove(receiptId));
+        cancelPendingFuture(pendingCallbackFutures.remove(receiptId));
+    }
+
+    private void cancelPendingReceiptsByTag(String tag) {
+        cancelPendingReceiptsByTag(pendingPollFutures, tag);
+        cancelPendingReceiptsByTag(pendingCallbackFutures, tag);
+    }
+
+    private static void cancelPendingFuture(PendingReceiptFuture<?> pendingFuture) {
+        if (pendingFuture != null) {
+            pendingFuture.future().cancel(false);
+        }
+    }
+
+    private static void cancelPendingReceiptsByTag(
+            ConcurrentMap<String, ? extends PendingReceiptFuture<?>> pendingFutures,
+            String tag
+    ) {
+        for (Map.Entry<String, ? extends PendingReceiptFuture<?>> entry : pendingFutures.entrySet()) {
+            if (entry.getValue().tags().contains(tag) && pendingFutures.remove(entry.getKey(), entry.getValue())) {
+                entry.getValue().future().cancel(false);
+            }
+        }
+    }
+
+    private static Set<String> parseTags(String tags) {
+        if (isBlank(tags)) {
+            return Collections.emptySet();
+        }
+        Set<String> values = new HashSet<>();
+        for (String tag : tags.split(",")) {
+            String normalized = normalizeBlank(tag);
+            if (normalized != null) {
+                values.add(normalized);
+            }
+        }
+        return Collections.unmodifiableSet(values);
+    }
+
+    private static boolean hasExpired(long startedAt, Duration expiration) {
+        return System.nanoTime() - startedAt >= expiration.toNanos();
+    }
+
+    private static void sleep(Duration duration) throws InterruptedException {
+        long millis = duration.toMillis();
+        int nanos = duration.toNanosPart() % 1_000_000;
+        Thread.sleep(millis, nanos);
+    }
+
     /**
      * Encodes fields as application/x-www-form-urlencoded.
      *
@@ -699,6 +1059,10 @@ public class PushoverClient {
         return value;
     }
 
+    private static String normalizeBlank(String value) {
+        return isBlank(value) ? null : value.trim();
+    }
+
     /**
      * Validates and normalizes a receipt id used in path parameters.
      *
@@ -763,5 +1127,13 @@ public class PushoverClient {
      */
     private static String encodePathSegment(String value) {
         return encode(value).replace("+", "%20");
+    }
+
+    @FunctionalInterface
+    private interface InterruptibleTask {
+        void run() throws Exception;
+    }
+
+    private record PendingReceiptFuture<T>(CompletableFuture<T> future, Set<String> tags) {
     }
 }
