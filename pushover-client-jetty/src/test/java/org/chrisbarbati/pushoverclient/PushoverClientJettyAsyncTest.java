@@ -4,23 +4,22 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.JettyCallbackServer;
+import org.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackServer;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.ServerSocket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
@@ -38,12 +37,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Async receipt tests covering polling and callback-based flows.
+ * Jetty-specific async callback tests for the optional callback-server module.
  *
  * @since 0.3.0
  * @author Christian Barbati
  */
-class PushoverClientAsyncTest {
+class PushoverClientJettyAsyncTest {
     private static final String TOKEN = "a12345678901234567890123456789";
     private static final String USER = "uQiRzpo4DXghDmr9QzzfQu27cmVRsG";
     private static final String RECEIPT = "abcdefghijklmnopqrstuvwx123456";
@@ -61,153 +60,6 @@ class PushoverClientAsyncTest {
         server.shutdown();
     }
 
-    /**
-     * Verifies the polling async flow completes when the receipt becomes acknowledged.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
-    @Test
-    void sendEmergencyMessageAndAwaitAcknowledgement_completesWhenReceiptIsAcknowledged() throws Exception {
-        server.enqueue(new MockResponse().setResponseCode(200)
-                .setBody("{\"status\":1,\"request\":\"req-send\",\"receipt\":\"" + RECEIPT + "\"}"));
-        server.enqueue(new MockResponse().setResponseCode(200)
-                .setBody("{\"status\":1,\"request\":\"req-r1\",\"receipt\":\"" + RECEIPT
-                        + "\",\"acknowledged\":0,\"expired\":0,\"called_back\":0}"));
-        server.enqueue(new MockResponse().setResponseCode(200)
-                .setBody("{\"status\":1,\"request\":\"req-r2\",\"receipt\":\"" + RECEIPT
-                        + "\",\"acknowledged\":1,\"acknowledged_at\":1715800000,\"expired\":0,\"called_back\":0}"));
-
-        AsyncReceiptProperties properties = AsyncReceiptProperties.builder()
-                .pollInterval(Duration.ofMillis(10))
-                .pollFutureExpiration(Duration.ofSeconds(1))
-                .build();
-        PushoverClient client = new PushoverClient(
-                TOKEN,
-                null,
-                HttpClient.newHttpClient(),
-                server.url("/").toString().replaceAll("/$", ""),
-                properties,
-                null
-        );
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        try {
-            var future = client.sendEmergencyMessageAndAwaitAcknowledgement(emergencyRequest(), executorService);
-            ReceiptStatusResponse response = future.get(2, TimeUnit.SECONDS);
-
-            assertEquals(1, response.acknowledged());
-            assertEquals(RECEIPT, response.receipt());
-
-            RecordedRequest sendRequest = server.takeRequest();
-            RecordedRequest firstReceiptRequest = server.takeRequest();
-            RecordedRequest secondReceiptRequest = server.takeRequest();
-            assertEquals("/1/messages.json", sendRequest.getPath());
-            assertEquals("/1/receipts/" + RECEIPT + ".json?token=" + TOKEN, firstReceiptRequest.getPath());
-            assertEquals("/1/receipts/" + RECEIPT + ".json?token=" + TOKEN, secondReceiptRequest.getPath());
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    /**
-     * Verifies a per-call expiration override can terminate the polling async flow.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
-    @Test
-    void sendEmergencyMessageAndAwaitAcknowledgement_timesOutWhenOverrideExpires() {
-        server.enqueue(new MockResponse().setResponseCode(200)
-                .setBody("{\"status\":1,\"request\":\"req-send\",\"receipt\":\"" + RECEIPT + "\"}"));
-        for (int i = 0; i < 6; i++) {
-            server.enqueue(new MockResponse().setResponseCode(200)
-                    .setBody("{\"status\":1,\"request\":\"req-r\",\"receipt\":\"" + RECEIPT
-                            + "\",\"acknowledged\":0,\"expired\":0,\"called_back\":0}"));
-        }
-
-        AsyncReceiptProperties properties = AsyncReceiptProperties.builder()
-                .pollInterval(Duration.ofMillis(10))
-                .pollFutureExpiration(Duration.ofSeconds(5))
-                .build();
-        PushoverClient client = new PushoverClient(
-                TOKEN,
-                null,
-                HttpClient.newHttpClient(),
-                server.url("/").toString().replaceAll("/$", ""),
-                properties,
-                null
-        );
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        try {
-            var future = client.sendEmergencyMessageAndAwaitAcknowledgement(
-                    emergencyRequest(),
-                    executorService,
-                    Duration.ofMillis(35)
-            );
-
-            ExecutionException ex = assertThrows(ExecutionException.class, () -> future.get(2, TimeUnit.SECONDS));
-            assertInstanceOf(TimeoutException.class, ex.getCause());
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    /**
-     * Verifies cancelReceipt removes and cancels a pending polling future.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
-    @Test
-    void cancelReceipt_cancelsPendingPollingFuture() throws Exception {
-        server.enqueue(new MockResponse().setResponseCode(200)
-                .setBody("{\"status\":1,\"request\":\"req-send\",\"receipt\":\"" + RECEIPT + "\"}"));
-        server.enqueue(new MockResponse().setResponseCode(200)
-                .setBody("{\"status\":1,\"request\":\"req-r1\",\"receipt\":\"" + RECEIPT
-                        + "\",\"acknowledged\":0,\"expired\":0,\"called_back\":0}"));
-
-        AsyncReceiptProperties properties = AsyncReceiptProperties.builder()
-                .pollInterval(Duration.ofMillis(200))
-                .pollFutureExpiration(Duration.ofSeconds(5))
-                .build();
-        PushoverClient client = new PushoverClient(
-                TOKEN,
-                null,
-                HttpClient.newHttpClient(),
-                server.url("/").toString().replaceAll("/$", ""),
-                properties,
-                null
-        );
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        try {
-            var future = client.sendEmergencyMessageAndAwaitAcknowledgement(emergencyRequest(), executorService);
-            server.takeRequest();
-            server.takeRequest();
-
-            server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-cancel\"}"));
-            client.cancelReceipt(RECEIPT);
-
-            assertThrows(CancellationException.class, future::join);
-            RecordedRequest cancelRequest = server.takeRequest();
-            assertEquals("/1/receipts/" + RECEIPT + "/cancel.json", cancelRequest.getPath());
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    /**
-     * Verifies the callback async flow completes from a Jetty-hosted callback endpoint.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
     @Test
     void sendEmergencyMessageAndAwaitCallback_completesWhenJettyReceivesCallback() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200)
@@ -249,13 +101,6 @@ class PushoverClientAsyncTest {
         }
     }
 
-    /**
-     * Verifies a request-level callback overrides the default callback URL used for the outgoing API request.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
     @Test
     void sendEmergencyMessageAndAwaitCallback_usesRequestCallbackWhenItOverridesDefault() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200)
@@ -299,13 +144,6 @@ class PushoverClientAsyncTest {
         }
     }
 
-    /**
-     * Verifies callback futures honor a per-call expiration override.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
     @Test
     void sendEmergencyMessageAndAwaitCallback_timesOutWhenOverrideExpires() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200)
@@ -346,13 +184,6 @@ class PushoverClientAsyncTest {
         }
     }
 
-    /**
-     * Verifies cancelByTag removes and cancels a pending callback future.
-     *
-     * @throws Exception when the test fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
     @Test
     void cancelByTag_cancelsPendingCallbackFuture() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200)
@@ -437,7 +268,4 @@ class PushoverClientAsyncTest {
         throw new AssertionError("Timed out waiting for " + fieldName + " to reach size " + expectedCount);
     }
 }
-
-
-
 

@@ -1,11 +1,10 @@
 package org.chrisbarbati.pushoverclient;
 
 import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.JettyCallbackServer;
+import org.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackServer;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -18,9 +17,8 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,86 +26,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Live integration tests for async emergency receipt flows that require user acknowledgement.
+ * Live integration tests for the optional Jetty callback-server implementation.
  *
  * @apiNote These tests are opt-in and intended for interactive runs because they require the user to acknowledge the delivered notification.
  * @since 0.3.0
  * @author Christian Barbati
  */
-class PushoverClientAsyncIT {
-    private static final Logger LOGGER = LoggerFactory.getLogger(PushoverClientAsyncIT.class);
+class PushoverClientJettyAsyncIT {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PushoverClientJettyAsyncIT.class);
     private static final Properties CONFIG = loadConfig();
     private static final Duration USER_ACK_TIMEOUT = Duration.ofMinutes(1);
 
-    /**
-     * Verifies the polling-based async emergency flow completes after the user acknowledges the notification.
-     *
-     * @throws Exception when the API call or async wait fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
-    @Test
-    void live_asyncPollingAcknowledgement_whenEnabled() throws Exception {
-        requireAsyncEmergencyTestsEnabled();
-
-        String token = required("pushover.appToken");
-        String user = required("pushover.userKey");
-        String encryptionKey = optional("pushover.encryptionKey");
-        String tag = uniqueTag("pushoverclient-async-poll");
-
-        AsyncReceiptProperties asyncProperties = AsyncReceiptProperties.builder()
-                .pollInterval(Duration.ofSeconds(5))
-                .pollFutureExpiration(USER_ACK_TIMEOUT)
-                .build();
-        PushoverClient client = new PushoverClient(
-                token,
-                encryptionKey,
-                HttpClient.newHttpClient(),
-                "https://api.pushover.net",
-                asyncProperties,
-                null
-        );
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        try {
-            MessageRequest request = MessageRequest.builder(
-                            user,
-                            "[Async Polling IT] Please acknowledge this notification within 1 minute so the polling async integration test can pass."
-                    )
-                    .title("PushoverClient Async Polling IT")
-                    .priority(MessagePriority.EMERGENCY)
-                    .retry(30)
-                    .expire(300)
-                    .tags(tag)
-                    .build();
-
-            ReceiptStatusResponse response = client.sendEmergencyMessageAndAwaitAcknowledgement(
-                    request,
-                    executorService,
-                    USER_ACK_TIMEOUT
-            ).get(USER_ACK_TIMEOUT.toSeconds() + 10, TimeUnit.SECONDS);
-
-            assertEquals(1, response.status());
-            assertEquals(1, response.acknowledged());
-            System.out.printf(
-                    "SUCCESS: Async polling IT acknowledged by %s on device %s for request %s%n",
-                    valueOrPlaceholder(response.acknowledgedBy()),
-                    valueOrPlaceholder(response.acknowledgedByDevice()),
-                    valueOrPlaceholder(response.request())
-            );
-        } finally {
-            cancelByTagQuietly(client, tag);
-            executorService.shutdownNow();
-        }
-    }
-
-    /**
-     * Verifies the Jetty callback-based async emergency flow completes after the user acknowledges the notification.
-     *
-     * @throws Exception when the API call, callback server setup, or async wait fails unexpectedly
-     * @since 0.3.0
-     * @author Christian Barbati
-     */
     @Test
     void live_asyncJettyCallbackAcknowledgement_whenEnabled() throws Exception {
         requireAsyncEmergencyTestsEnabled();
@@ -233,12 +162,6 @@ class PushoverClientAsyncIT {
         );
     }
 
-    /**
-     * Resolves a required integration property or aborts the current test.
-     *
-     * @param key property key
-     * @return resolved non-blank value
-     */
     private static String required(String key) {
         String value = optional(key);
         if (isBlank(value)) {
@@ -249,12 +172,6 @@ class PushoverClientAsyncIT {
         return value;
     }
 
-    /**
-     * Resolves a property from system properties, environment variables, or test config file.
-     *
-     * @param key property key
-     * @return value when configured, otherwise null/blank
-     */
     private static String optional(String key) {
         String sys = System.getProperty(key);
         if (!isBlank(sys)) {
@@ -269,14 +186,9 @@ class PushoverClientAsyncIT {
         return CONFIG.getProperty(key);
     }
 
-    /**
-     * Loads integration properties from classpath resource.
-     *
-     * @return loaded properties, possibly empty
-     */
     private static Properties loadConfig() {
         Properties props = new Properties();
-        try (InputStream in = PushoverClientAsyncIT.class.getClassLoader().getResourceAsStream("pushover-integration.properties")) {
+        try (InputStream in = PushoverClientJettyAsyncIT.class.getClassLoader().getResourceAsStream("pushover-integration.properties")) {
             if (in != null) {
                 props.load(in);
             } else {
@@ -288,12 +200,6 @@ class PushoverClientAsyncIT {
         return props;
     }
 
-    /**
-     * Checks whether a string is null or blank.
-     *
-     * @param value candidate string
-     * @return true when the value is null or blank
-     */
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }

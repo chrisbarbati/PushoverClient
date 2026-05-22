@@ -1,7 +1,8 @@
-package org.chrisbarbati.pushoverclient.callback;
+package org.chrisbarbati.pushoverclient.callback.jetty;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.chrisbarbati.pushoverclient.callback.CallbackServer;
 import org.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 import org.eclipse.jetty.server.Request;

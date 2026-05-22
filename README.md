@@ -2,6 +2,11 @@
 
 Java client for the Pushover REST API.
 
+## Modules
+
+- `pushover-client` - core client, async orchestration, and the `CallbackServer` abstraction
+- `pushover-client-jetty` - optional Jetty-backed `CallbackServer` implementation
+
 ## Current scope
 
 - Send messages via `/1/messages.json`, including optional fields and parameters
@@ -22,7 +27,7 @@ Set credentials, then run the small harness in `Main`.
 export PUSHOVER_APP_TOKEN="your_app_token"
 export PUSHOVER_USER_KEY="your_user_key"
 export PUSHOVER_ENCRYPTION_KEY="64_char_hex_key_optional"
-mvn -q -DskipTests exec:java -Dexec.mainClass=org.chrisbarbati.Main -Dexec.args="Hello from CLI"
+mvn -q -pl pushover-client -DskipTests exec:java -Dexec.mainClass=org.chrisbarbati.Main -Dexec.args="Hello from CLI"
 ```
 
 If `PUSHOVER_APP_TOKEN` or `PUSHOVER_USER_KEY` is missing, the example exits without error.
@@ -37,7 +42,7 @@ mvn -q test
 
 Run integration tests (optional):
 
-1. Fill `src/test/resources/pushover-integration.properties`, or set system properties/env vars.
+1. Fill `pushover-client/src/test/resources/pushover-integration.properties`, or set system properties/env vars.
 2. For attachment integration tests, provide one or two real image files and set:
    - `pushover.multipartAttachment.path`
    - `pushover.multipartAttachment.contentType`
@@ -112,7 +117,7 @@ import java.util.concurrent.Executors;
 
 import org.chrisbarbati.pushoverclient.PushoverClient;
 import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.JettyCallbackServer;
+import org.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackServer;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
@@ -215,7 +220,7 @@ import java.util.concurrent.Executors;
 
 import org.chrisbarbati.pushoverclient.PushoverClient;
 import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.JettyCallbackServer;
+import org.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackServer;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
@@ -266,6 +271,7 @@ public final class EmergencyCallbackAsyncExample {
 
 Notes:
 
+- To use `JettyCallbackServer`, depend on both the core `pushover-client` artifact and the optional `pushover-client-jetty` artifact.
 - Polling interval, default callback URL, conflict-warning behavior, and default future expirations are configured via `AsyncReceiptProperties`.
 - Both async APIs also provide `Duration` overloads for per-call expiration overrides.
 - `sendEmergencyMessageAndAwaitCallback(...)` uses the request callback when present. If it conflicts with the configured default callback URL, the request value wins and a WARN log is emitted unless `warnOnConflictingCallback(false)` is configured.

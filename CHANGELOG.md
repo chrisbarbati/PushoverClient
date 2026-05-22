@@ -2,6 +2,10 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.4.0] - 2026-05-21
+### Added
+- Multi-module layout separating the core client artifact from the optional Jetty callback implementation artifact
+
 ## [0.3.0] - 2026-05-19
 
 ### Added
