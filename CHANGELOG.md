@@ -2,13 +2,16 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
-## [Unreleased]
+## [0.5.0] - 2026-05-23
 ### Added
 - GitHub Actions automation that runs the full Maven reactor on every push and pull request
 - Rolling GitHub prerelease updates on each successful push to `main`, including built module JAR assets
+- Optional `pushover-client-tomcat` module with embedded `TomcatCallbackServer` support for self-managed async callback lifecycle
+- Live async acknowledgement integration coverage for the optional Tomcat callback-server module using the existing async integration properties
 
 ### Changed
 - Project versioning is now centralized through the root Maven `revision` property to support shared release metadata across modules and GitHub automation
+- README module and lifecycle guidance now includes the optional Tomcat callback-server artifact alongside the existing servlet and Jetty integrations
 
 ## [0.4.0] - 2026-05-21
 ### Added

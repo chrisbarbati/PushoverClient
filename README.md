@@ -7,6 +7,7 @@ Java client for the Pushover REST API.
 - `pushover-client` - core client, async orchestration, shared callback parsing, and the `CallbackServer` abstraction
 - `pushover-client-servlet` - optional generic servlet callback adapter for host-managed servlet containers
 - `pushover-client-jetty` - optional Jetty-native callback `Handler` support plus the Jetty-backed `CallbackServer` implementation for self-managed lifecycle
+- `pushover-client-tomcat` - optional Tomcat-backed `CallbackServer` implementation for self-managed callback lifecycle
 
 ## Current scope
 
@@ -57,7 +58,7 @@ Run integration tests (optional):
    - `pushover.callbackUrl` (optional; use a real publicly reachable URL to include callback submission in the lifecycle flow)
    - `pushover.tags` (optional single base tag; defaults to `pushoverclient-it`)
    - `pushover.strictEmergencyTest=true` to fail build when API rejects callback/tags (default behavior is skip)
-5. For async callback acknowledgement integration tests in `pushover-client-servlet` and `pushover-client-jetty` (opt-in), set:
+5. For async callback acknowledgement integration tests in `pushover-client-servlet`, `pushover-client-jetty`, and `pushover-client-tomcat` (opt-in), set:
    - `pushover.enableAsyncEmergencyTests=true`
    - `pushover.asyncCallbackBindUri` (local bind URI for the embedded test server)
    - `pushover.asyncCallbackUrl` (public callback URL that forwards to the bind URI above)
@@ -81,7 +82,7 @@ Current integration coverage includes:
 - multipart attachment send
 - base64 attachment send
 - emergency receipt lookup and cancellation lifecycle (opt-in)
-- async servlet and Jetty callback acknowledgement flows (opt-in)
+- async servlet, Jetty, and Tomcat callback acknowledgement flows (opt-in)
 - intentional live failures (invalid user and invalid token)
 
 ## Programmatic usage
@@ -356,6 +357,66 @@ public final class SelfManagedJettyCallbackExample {
     ) {
         ExecutorService executorService = Executors.newCachedThreadPool();
         JettyCallbackServer callbackServer = new JettyCallbackServer(
+                URI.create("http://127.0.0.1:8080/pushover/callback"),
+                executorService
+        );
+
+        AsyncReceiptProperties asyncProperties = AsyncReceiptProperties.builder()
+                .callbackFutureExpiration(Duration.ofMinutes(10))
+                .warnOnConflictingCallback(true)
+                .build();
+
+        PushoverClient client = new PushoverClient(
+                appToken,
+                null,
+                HttpClient.newHttpClient(),
+                "https://api.pushover.net",
+                asyncProperties,
+                callbackServer
+        );
+
+        MessageRequest request = MessageRequest.builder(userKey, "Database unavailable")
+                .priority(MessagePriority.EMERGENCY)
+                .retry(30)
+                .expire(300)
+                .build();
+
+        return client.sendEmergencyMessageAndAwaitCallback(
+                request,
+                executorService,
+                Duration.ofMinutes(6)
+        );
+    }
+}
+```
+
+Tomcat self-managed callback lifecycle:
+
+```java
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import org.chrisbarbati.pushoverclient.PushoverClient;
+import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import org.chrisbarbati.pushoverclient.callback.tomcat.TomcatCallbackServer;
+import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+
+public final class SelfManagedTomcatCallbackExample {
+    private SelfManagedTomcatCallbackExample() {
+    }
+
+    public static CompletableFuture<ReceiptCallbackResponse> sendAndAwaitCallback(
+            String appToken,
+            String userKey
+    ) {
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        TomcatCallbackServer callbackServer = new TomcatCallbackServer(
                 URI.create("http://127.0.0.1:8080/pushover/callback"),
                 executorService
         );
