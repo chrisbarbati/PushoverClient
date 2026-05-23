@@ -2,6 +2,14 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [Unreleased]
+### Added
+- GitHub Actions automation that runs the full Maven reactor on every push and pull request
+- Rolling GitHub prerelease updates on each successful push to `main`, including built module JAR assets
+
+### Changed
+- Project versioning is now centralized through the root Maven `revision` property to support shared release metadata across modules and GitHub automation
+
 ## [0.4.0] - 2026-05-21
 ### Added
 - Multi-module layout separating the core client artifact from optional servlet and Jetty callback integration artifacts

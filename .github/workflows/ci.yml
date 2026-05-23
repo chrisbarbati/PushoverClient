@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    outputs:
+      project-version: ${{ steps.project-version.outputs.value }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Temurin 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Resolve project version
+        id: project-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(mvn -q -N help:evaluate -Dexpression=project.version -DforceStdout | grep -E '^[0-9A-Za-z._-]+$' | tail -n 1)"
+          if [[ -z "${version}" ]]; then
+            echo "Could not resolve project version" >&2
+            exit 1
+          fi
+          echo "value=${version}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved project version: ${version}"
+
+      - name: Verify build
+        run: mvn -B verify
+
+      - name: Stage release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find pushover-client/target pushover-client-servlet/target pushover-client-jetty/target \
+            -maxdepth 1 \
+            -type f \
+            -name '*.jar' \
+            -exec cp {} release-assets/ \;
+          find release-assets -maxdepth 1 -type f -name '*.jar' -print | sort
+
+      - name: Upload built jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-jars
+          if-no-files-found: error
+          path: release-assets/*.jar
+
+  rolling-prerelease:
+    name: rolling-prerelease
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      ROLLING_TAG: rolling-main
+      PROJECT_VERSION: ${{ needs.verify.outputs.project-version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download tested jars
+        uses: actions/download-artifact@v4
+        with:
+          name: maven-jars
+          path: release-assets
+
+      - name: Show release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          find release-assets -maxdepth 1 -type f -name '*.jar' -print | sort
+
+      - name: Move rolling prerelease tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "${ROLLING_TAG}" -m "Rolling prerelease for ${GITHUB_SHA}" "${GITHUB_SHA}"
+          git push origin "refs/tags/${ROLLING_TAG}" --force
+
+      - name: Publish rolling prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.ROLLING_TAG }}
+          name: Rolling prerelease ${{ env.PROJECT_VERSION }}
+          prerelease: true
+          make_latest: false
+          target_commitish: ${{ github.sha }}
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: release-assets/*.jar
+          body: |
+            Automated rolling prerelease for the latest successful push to `main`.
+
+            - Version: `${{ env.PROJECT_VERSION }}`
+            - Commit: `${{ github.sha }}`
+            - Assets: tested reactor JARs from the `verify` job
+
+            This workflow is intentionally split into build/artifact/release stages so signing and Maven Central deploy steps can be added later without redesigning the pipeline.
+
+

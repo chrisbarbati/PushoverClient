@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.chrisbarbati</groupId>
         <artifactId>pushover-client-parent</artifactId>
-        <version>0.4.0</version>
+        <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
