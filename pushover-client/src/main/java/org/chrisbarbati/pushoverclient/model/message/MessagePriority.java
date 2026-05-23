@@ -25,7 +25,6 @@ public enum MessagePriority {
      *
      * @param value integer value accepted by Pushover
      * @since 0.1.0
-     * @author Christian Barbati
      */
     MessagePriority(int value) {
         this.value = value;
@@ -34,10 +33,10 @@ public enum MessagePriority {
     /**
      * @return raw integer value expected by the Pushover API
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public int value() {
         return value;
     }
 }
+
 

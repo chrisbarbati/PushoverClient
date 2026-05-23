@@ -27,7 +27,6 @@ class PushoverClientValidationTest {
      * Verifies mutually exclusive formatting flags are rejected.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_rejectsHtmlAndMonospaceTogether() {
@@ -44,7 +43,6 @@ class PushoverClientValidationTest {
      * Verifies emergency messages require retry and expire values.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_rejectsEmergencyWithoutRetryAndExpire() {
@@ -60,7 +58,6 @@ class PushoverClientValidationTest {
      * Verifies TTL is not accepted for emergency priority messages.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_rejectsTtlForEmergencyPriority() {
@@ -79,7 +76,6 @@ class PushoverClientValidationTest {
      * Verifies blank receipt ids are rejected before receipt lookup network calls.
      *
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void getReceipt_rejectsBlankReceiptId() {
@@ -92,7 +88,6 @@ class PushoverClientValidationTest {
      * Verifies malformed receipt ids are rejected before cancellation network calls.
      *
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void cancelReceipt_rejectsMalformedReceiptId() {
@@ -105,7 +100,6 @@ class PushoverClientValidationTest {
      * Verifies blank tags are rejected before cancel-by-tag network calls.
      *
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void cancelByTag_rejectsBlankTag() {
@@ -118,7 +112,6 @@ class PushoverClientValidationTest {
      * Verifies the polling async flow rejects non-emergency messages before background execution.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void sendEmergencyMessageAndAwaitAcknowledgement_rejectsNonEmergencyMessages() {
@@ -143,7 +136,6 @@ class PushoverClientValidationTest {
      * Verifies the callback async flow fails when neither a callback URL nor a callback server is configured.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void sendEmergencyMessageAndAwaitCallback_requiresCallbackConfiguration() {
@@ -167,4 +159,5 @@ class PushoverClientValidationTest {
         }
     }
 }
+
 

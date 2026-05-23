@@ -18,7 +18,6 @@ public interface CallbackServer extends AutoCloseable {
      * @param callbackHandler consumer invoked for each parsed callback payload
      * @throws Exception when the callback server fails to start
      * @since 0.3.0
-     * @author Christian Barbati
      */
     void start(Consumer<ReceiptCallbackResponse> callbackHandler) throws Exception;
 
@@ -27,21 +26,18 @@ public interface CallbackServer extends AutoCloseable {
      *
      * @throws Exception when shutdown fails
      * @since 0.3.0
-     * @author Christian Barbati
      */
     void stop() throws Exception;
 
     /**
      * @return true when the server is running and able to receive callbacks
      * @since 0.3.0
-     * @author Christian Barbati
      */
     boolean isRunning();
 
     /**
      * @return the effective callback URI handled by this server
      * @since 0.3.0
-     * @author Christian Barbati
      */
     URI callbackUri();
 
@@ -50,4 +46,5 @@ public interface CallbackServer extends AutoCloseable {
         stop();
     }
 }
+
 

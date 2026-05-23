@@ -22,7 +22,6 @@ class MessageRequestBuilderTest {
      * Verifies all optional builder methods populate the immutable request model.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void builder_setsAllOptionalFields() {
@@ -77,7 +76,6 @@ class MessageRequestBuilderTest {
      * Verifies {@code toBuilder()} preserves existing values while allowing targeted overrides.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void toBuilder_copiesExistingValues() {
@@ -102,4 +100,5 @@ class MessageRequestBuilderTest {
         assertEquals("https://example.com/override", copied.callback());
     }
 }
+
 

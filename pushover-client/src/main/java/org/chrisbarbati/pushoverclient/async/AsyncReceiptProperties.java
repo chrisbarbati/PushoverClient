@@ -41,7 +41,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return default async receipt properties
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public static AsyncReceiptProperties defaults() {
         return builder().build();
@@ -50,7 +49,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return builder initialized with library defaults
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public static Builder builder() {
         return new Builder();
@@ -59,7 +57,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return polling interval used by the polling-based future flow
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public Duration pollInterval() {
         return pollInterval;
@@ -68,7 +65,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return default expiration used by polling futures when no override is supplied
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public Duration pollFutureExpiration() {
         return pollFutureExpiration;
@@ -77,7 +73,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return default expiration used by callback futures when no override is supplied
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public Duration callbackFutureExpiration() {
         return callbackFutureExpiration;
@@ -86,7 +81,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return default callback URL to send when the request does not provide one
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public String defaultCallbackUrl() {
         return defaultCallbackUrl;
@@ -95,7 +89,6 @@ public final class AsyncReceiptProperties {
     /**
      * @return true when conflicting request/default callbacks should log a warning
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public boolean warnOnConflictingCallback() {
         return warnOnConflictingCallback;
@@ -119,7 +112,6 @@ public final class AsyncReceiptProperties {
      * Fluent builder for async receipt properties.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public static final class Builder {
         private Duration pollInterval = DEFAULT_POLL_INTERVAL;
@@ -135,7 +127,6 @@ public final class AsyncReceiptProperties {
          * @param pollInterval polling interval used by polling-based acknowledgement lookups
          * @return this builder
          * @since 0.3.0
-         * @author Christian Barbati
          */
         public Builder pollInterval(Duration pollInterval) {
             this.pollInterval = pollInterval;
@@ -146,7 +137,6 @@ public final class AsyncReceiptProperties {
          * @param pollFutureExpiration default lifetime for polling futures
          * @return this builder
          * @since 0.3.0
-         * @author Christian Barbati
          */
         public Builder pollFutureExpiration(Duration pollFutureExpiration) {
             this.pollFutureExpiration = pollFutureExpiration;
@@ -157,7 +147,6 @@ public final class AsyncReceiptProperties {
          * @param callbackFutureExpiration default lifetime for callback futures
          * @return this builder
          * @since 0.3.0
-         * @author Christian Barbati
          */
         public Builder callbackFutureExpiration(Duration callbackFutureExpiration) {
             this.callbackFutureExpiration = callbackFutureExpiration;
@@ -168,7 +157,6 @@ public final class AsyncReceiptProperties {
          * @param defaultCallbackUrl default callback URL to send when the request omits one
          * @return this builder
          * @since 0.3.0
-         * @author Christian Barbati
          */
         public Builder defaultCallbackUrl(String defaultCallbackUrl) {
             this.defaultCallbackUrl = defaultCallbackUrl;
@@ -179,7 +167,6 @@ public final class AsyncReceiptProperties {
          * @param warnOnConflictingCallback true to log when a request callback overrides the configured default
          * @return this builder
          * @since 0.3.0
-         * @author Christian Barbati
          */
         public Builder warnOnConflictingCallback(boolean warnOnConflictingCallback) {
             this.warnOnConflictingCallback = warnOnConflictingCallback;
@@ -189,11 +176,11 @@ public final class AsyncReceiptProperties {
         /**
          * @return immutable async receipt properties
          * @since 0.3.0
-         * @author Christian Barbati
          */
         public AsyncReceiptProperties build() {
             return new AsyncReceiptProperties(this);
         }
     }
 }
+
 

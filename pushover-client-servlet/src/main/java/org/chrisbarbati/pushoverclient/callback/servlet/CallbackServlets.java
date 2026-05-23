@@ -29,7 +29,6 @@ public final class CallbackServlets {
      * @param callbackHandler consumer invoked for each successfully parsed callback payload
      * @return servlet suitable for mounting in an existing servlet container
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static HttpServlet create(Consumer<ReceiptCallbackResponse> callbackHandler) {
         return new PushoverCallbackServlet(callbackHandler);
@@ -41,7 +40,6 @@ public final class CallbackServlets {
      * @param client client whose pending callback futures should be completed
      * @return servlet suitable for mounting in an existing servlet container
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static HttpServlet create(PushoverClient client) {
         Objects.requireNonNull(client, "client is required");
@@ -80,4 +78,5 @@ public final class CallbackServlets {
         }
     }
 }
+
 

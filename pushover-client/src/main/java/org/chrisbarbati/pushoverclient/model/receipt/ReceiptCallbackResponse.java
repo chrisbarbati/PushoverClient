@@ -39,7 +39,6 @@ public record ReceiptCallbackResponse(
      * @param fields parsed callback fields
      * @return typed callback response
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public static ReceiptCallbackResponse fromFields(Map<String, String> fields) {
         if (fields == null || fields.isEmpty()) {
@@ -98,4 +97,5 @@ public record ReceiptCallbackResponse(
         }
     }
 }
+
 

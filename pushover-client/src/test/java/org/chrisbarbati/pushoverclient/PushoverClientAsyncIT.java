@@ -37,7 +37,6 @@ class PushoverClientAsyncIT {
      *
      * @throws Exception when the API call or async wait fails unexpectedly
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void live_asyncPollingAcknowledgement_whenEnabled() throws Exception {
@@ -184,4 +183,5 @@ class PushoverClientAsyncIT {
         return value == null || value.isBlank();
     }
 }
+
 

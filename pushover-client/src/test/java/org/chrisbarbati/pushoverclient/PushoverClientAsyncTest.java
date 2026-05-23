@@ -59,7 +59,6 @@ class PushoverClientAsyncTest {
      *
      * @throws Exception when the test fails unexpectedly
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void sendEmergencyMessageAndAwaitAcknowledgement_completesWhenReceiptIsAcknowledged() throws Exception {
@@ -108,7 +107,6 @@ class PushoverClientAsyncTest {
      * Verifies a per-call expiration override can terminate the polling async flow.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void sendEmergencyMessageAndAwaitAcknowledgement_timesOutWhenOverrideExpires() {
@@ -153,7 +151,6 @@ class PushoverClientAsyncTest {
      *
      * @throws Exception when the test fails unexpectedly
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void cancelReceipt_cancelsPendingPollingFuture() throws Exception {
@@ -259,6 +256,7 @@ class PushoverClientAsyncTest {
         throw new AssertionError("Timed out waiting for pendingCallbackFutures to reach size 1");
     }
 }
+
 
 
 

@@ -36,7 +36,6 @@ public final class MessageRequest {
      *
      * @param builder populated builder instance
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private MessageRequest(Builder builder) {
         this.user = builder.user;
@@ -66,7 +65,6 @@ public final class MessageRequest {
      * @param message notification body
      * @return builder for optional fields
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public static Builder builder(String user, String message) {
         return new Builder(user, message);
@@ -75,7 +73,6 @@ public final class MessageRequest {
     /**
      * @return target user/group identifier list
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String user() {
         return user;
@@ -84,7 +81,6 @@ public final class MessageRequest {
     /**
      * @return message body
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String message() {
         return message;
@@ -93,7 +89,6 @@ public final class MessageRequest {
     /**
      * @return optional device name or comma-separated device names
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String device() {
         return device;
@@ -102,7 +97,6 @@ public final class MessageRequest {
     /**
      * @return optional message title
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String title() {
         return title;
@@ -111,7 +105,6 @@ public final class MessageRequest {
     /**
      * @return optional supplementary URL
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String url() {
         return url;
@@ -120,7 +113,6 @@ public final class MessageRequest {
     /**
      * @return optional title for the supplementary URL
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String urlTitle() {
         return urlTitle;
@@ -129,7 +121,6 @@ public final class MessageRequest {
     /**
      * @return 1 when HTML parsing is enabled, otherwise null
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Integer html() {
         return html;
@@ -138,7 +129,6 @@ public final class MessageRequest {
     /**
      * @return 1 when monospace rendering is enabled, otherwise null
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Integer monospace() {
         return monospace;
@@ -147,7 +137,6 @@ public final class MessageRequest {
     /**
      * @return configured message priority
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public MessagePriority priority() {
         return priority;
@@ -156,7 +145,6 @@ public final class MessageRequest {
     /**
      * @return optional override sound key
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String sound() {
         return sound;
@@ -165,7 +153,6 @@ public final class MessageRequest {
     /**
      * @return optional unix timestamp to display
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Long timestamp() {
         return timestamp;
@@ -174,7 +161,6 @@ public final class MessageRequest {
     /**
      * @return optional TTL in seconds
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Integer ttl() {
         return ttl;
@@ -183,7 +169,6 @@ public final class MessageRequest {
     /**
      * @return optional emergency retry interval
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Integer retry() {
         return retry;
@@ -192,7 +177,6 @@ public final class MessageRequest {
     /**
      * @return optional emergency expiration seconds
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Integer expire() {
         return expire;
@@ -201,7 +185,6 @@ public final class MessageRequest {
     /**
      * @return optional emergency callback URL
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String callback() {
         return callback;
@@ -210,7 +193,6 @@ public final class MessageRequest {
     /**
      * @return optional emergency tags for cancel-by-tag APIs
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String tags() {
         return tags;
@@ -219,7 +201,6 @@ public final class MessageRequest {
     /**
      * @return optional attachment payload
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Attachment attachment() {
         return attachment;
@@ -228,7 +209,6 @@ public final class MessageRequest {
     /**
      * @return true when message, title, url, and url_title should be encrypted
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public boolean encrypted() {
         return encrypted;
@@ -239,7 +219,6 @@ public final class MessageRequest {
      *
      * @return builder initialized from this request
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public Builder toBuilder() {
         return builder(user, message)
@@ -267,7 +246,6 @@ public final class MessageRequest {
      *
      * @implNote Builder performs no network-level validation; use PushoverClient to validate.
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public static final class Builder {
         private final String user;
@@ -295,7 +273,6 @@ public final class MessageRequest {
          * @param user target user/group key or comma-separated list
          * @param message notification body
          * @since 0.1.0
-         * @author Christian Barbati
          */
         private Builder(String user, String message) {
             this.user = Objects.requireNonNull(user, "user is required");
@@ -308,7 +285,6 @@ public final class MessageRequest {
          * @param device device name or comma-separated names
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder device(String device) {
             this.device = device;
@@ -321,7 +297,6 @@ public final class MessageRequest {
          * @param title title text
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder title(String title) {
             this.title = title;
@@ -334,7 +309,6 @@ public final class MessageRequest {
          * @param url URL shown below the message
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder url(String url) {
             this.url = url;
@@ -347,7 +321,6 @@ public final class MessageRequest {
          * @param urlTitle URL display title
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder urlTitle(String urlTitle) {
             this.urlTitle = urlTitle;
@@ -360,7 +333,6 @@ public final class MessageRequest {
          * @param htmlEnabled true to send html=1
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder html(boolean htmlEnabled) {
             this.html = htmlEnabled ? 1 : null;
@@ -373,7 +345,6 @@ public final class MessageRequest {
          * @param monospaceEnabled true to send monospace=1
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder monospace(boolean monospaceEnabled) {
             this.monospace = monospaceEnabled ? 1 : null;
@@ -386,7 +357,6 @@ public final class MessageRequest {
          * @param priority priority enum
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder priority(MessagePriority priority) {
             this.priority = Objects.requireNonNull(priority, "priority is required");
@@ -399,7 +369,6 @@ public final class MessageRequest {
          * @param sound sound key from the sounds API
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder sound(String sound) {
             this.sound = sound;
@@ -412,7 +381,6 @@ public final class MessageRequest {
          * @param timestamp unix timestamp
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder timestamp(long timestamp) {
             this.timestamp = timestamp;
@@ -425,7 +393,6 @@ public final class MessageRequest {
          * @param ttl seconds to keep the message
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder ttl(int ttl) {
             this.ttl = ttl;
@@ -438,7 +405,6 @@ public final class MessageRequest {
          * @param retry seconds between retries (min 30)
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder retry(int retry) {
             this.retry = retry;
@@ -451,7 +417,6 @@ public final class MessageRequest {
          * @param expire seconds before retries stop (max 10800)
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder expire(int expire) {
             this.expire = expire;
@@ -464,7 +429,6 @@ public final class MessageRequest {
          * @param callback callback endpoint
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder callback(String callback) {
             this.callback = callback;
@@ -477,7 +441,6 @@ public final class MessageRequest {
          * @param tags comma-separated tag list
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder tags(String tags) {
             this.tags = tags;
@@ -490,7 +453,6 @@ public final class MessageRequest {
          * @param attachment attachment payload
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder attachment(Attachment attachment) {
             this.attachment = attachment;
@@ -503,7 +465,6 @@ public final class MessageRequest {
          * @param encrypted true to send encrypted=1 and encrypted field values
          * @return this builder
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public Builder encrypted(boolean encrypted) {
             this.encrypted = encrypted;
@@ -531,11 +492,11 @@ public final class MessageRequest {
          *
          * @return immutable message request
          * @since 0.1.0
-         * @author Christian Barbati
          */
         public MessageRequest build() {
             return new MessageRequest(this);
         }
     }
 }
+
 

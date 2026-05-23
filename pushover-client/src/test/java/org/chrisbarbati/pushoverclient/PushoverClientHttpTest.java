@@ -44,7 +44,6 @@ class PushoverClientHttpTest {
      *
      * @throws IOException when server startup fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @BeforeEach
     void setup() throws IOException {
@@ -58,7 +57,6 @@ class PushoverClientHttpTest {
      *
      * @throws IOException when shutdown fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @AfterEach
     void teardown() throws IOException {
@@ -70,7 +68,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_postsFormEncodedWithoutAttachment() throws Exception {
@@ -95,7 +92,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_postsMultipartAttachment() throws Exception {
@@ -119,7 +115,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_postsBase64Attachment() throws Exception {
@@ -142,7 +137,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void getSounds_parsesResponse() throws Exception {
@@ -164,7 +158,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void getLimits_parsesResponse() throws Exception {
@@ -186,7 +179,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void getReceipt_parsesResponse() throws Exception {
@@ -210,7 +202,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void cancelReceipt_postsFormEncodedToken() throws Exception {
@@ -231,7 +222,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void cancelByTag_encodesTagPathAndPostsToken() throws Exception {
@@ -251,7 +241,6 @@ class PushoverClientHttpTest {
      *
      * @throws Exception when request processing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_withEncryption_sendsEncryptedFields() throws Exception {
@@ -282,7 +271,6 @@ class PushoverClientHttpTest {
      * Verifies message endpoint failures map to {@link PushoverApiException}.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void sendMessage_throwsApiExceptionOnFailureResponse() {
@@ -301,7 +289,6 @@ class PushoverClientHttpTest {
      * Verifies sounds endpoint failures map to {@link PushoverApiException}.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void getSounds_throwsApiExceptionOnFailureResponse() {
@@ -319,7 +306,6 @@ class PushoverClientHttpTest {
      * Verifies receipt status failures map to {@link PushoverApiException}.
      *
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void getReceipt_throwsApiExceptionOnFailureResponse() {
@@ -337,7 +323,6 @@ class PushoverClientHttpTest {
      * Verifies receipt cancel failures map to {@link PushoverApiException}.
      *
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void cancelReceipt_throwsApiExceptionOnFailureResponse() {
@@ -355,7 +340,6 @@ class PushoverClientHttpTest {
      * Verifies cancel-by-tag failures map to {@link PushoverApiException}.
      *
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void cancelByTag_throwsApiExceptionOnFailureResponse() {
@@ -369,4 +353,5 @@ class PushoverClientHttpTest {
         assertTrue(ex.getErrors().contains("tag is invalid"));
     }
 }
+
 

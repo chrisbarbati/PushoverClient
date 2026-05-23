@@ -35,7 +35,6 @@ public class E2eeEncryptor {
      * @param hexKey 64-character hex key
      * @return Base64 encoded payload in IV + ciphertext + HMAC layout
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String encryptField(String plaintext, String hexKey) {
         Objects.requireNonNull(plaintext, "plaintext is required");
@@ -67,7 +66,6 @@ public class E2eeEncryptor {
      * @param hexKey 64-character hex key
      * @return raw 32-byte key
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] decodeHexKey(String hexKey) {
         if (hexKey.length() != 64) {
@@ -86,7 +84,6 @@ public class E2eeEncryptor {
      * @param plaintext uncompressed field value
      * @return compressed payload bytes
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] gzip(String plaintext) {
         try {
@@ -108,7 +105,6 @@ public class E2eeEncryptor {
      * @param iv random 16-byte IV
      * @return ciphertext bytes
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] aes256CbcEncrypt(byte[] compressed, byte[] key, byte[] iv) {
         try {
@@ -127,7 +123,6 @@ public class E2eeEncryptor {
      * @param key shared secret key
      * @return hmac bytes
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] hmacSha256(byte[] payload, byte[] key) {
         try {
@@ -146,7 +141,6 @@ public class E2eeEncryptor {
      * @param right second array
      * @return combined array
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] concat(byte[] left, byte[] right) {
         byte[] result = new byte[left.length + right.length];
@@ -155,4 +149,5 @@ public class E2eeEncryptor {
         return result;
     }
 }
+
 

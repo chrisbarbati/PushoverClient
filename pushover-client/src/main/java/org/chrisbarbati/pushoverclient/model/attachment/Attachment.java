@@ -24,7 +24,6 @@ public final class Attachment {
      * @param contentType MIME type (for multipart header or attachment_type)
      * @param encoding upload format to use with the API
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public Attachment(String fileName, byte[] data, String contentType, AttachmentEncoding encoding) {
         this.fileName = Objects.requireNonNull(fileName, "fileName is required");
@@ -36,7 +35,6 @@ public final class Attachment {
     /**
      * @return file name used in multipart requests
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String fileName() {
         return fileName;
@@ -45,7 +43,6 @@ public final class Attachment {
     /**
      * @return defensive copy of attachment bytes
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public byte[] data() {
         return Arrays.copyOf(data, data.length);
@@ -54,7 +51,6 @@ public final class Attachment {
     /**
      * @return MIME type of the attachment
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String contentType() {
         return contentType;
@@ -63,10 +59,10 @@ public final class Attachment {
     /**
      * @return configured attachment encoding mode
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public AttachmentEncoding encoding() {
         return encoding;
     }
 }
+
 

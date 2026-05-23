@@ -12,7 +12,6 @@ public class PushoverClientException extends RuntimeException {
      *
      * @param message error description
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public PushoverClientException(String message) {
         super(message);
@@ -24,10 +23,10 @@ public class PushoverClientException extends RuntimeException {
      * @param message error description
      * @param cause root cause
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public PushoverClientException(String message, Throwable cause) {
         super(message, cause);
     }
 }
+
 

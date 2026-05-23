@@ -83,7 +83,6 @@ public class PushoverClient {
      *
      * @param appToken application API token
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public PushoverClient(String appToken) {
         this(appToken, null);
@@ -95,7 +94,6 @@ public class PushoverClient {
      * @param appToken application API token
      * @param encryptionKey optional 64-char hex key for encrypted messages
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public PushoverClient(String appToken, String encryptionKey) {
         this(appToken, encryptionKey, HttpClient.newHttpClient(), "https://api.pushover.net");
@@ -109,7 +107,6 @@ public class PushoverClient {
      * @param httpClient HTTP transport implementation
      * @param baseUrl API base URL
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public PushoverClient(String appToken, String encryptionKey, HttpClient httpClient, String baseUrl) {
         this(appToken, encryptionKey, httpClient, baseUrl, null, null);
@@ -125,7 +122,6 @@ public class PushoverClient {
      * @param asyncReceiptProperties async polling/callback defaults; when null, library defaults are used
      * @param callbackServer callback server implementation used by callback-based futures
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public PushoverClient(
             String appToken,
@@ -157,7 +153,6 @@ public class PushoverClient {
      * @throws PushoverClientException when request validation fails
      * @throws PushoverApiException when Pushover returns a non-success response
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public MessageResponse sendMessage(MessageRequest request) throws IOException, InterruptedException {
         validate(request);
@@ -194,7 +189,6 @@ public class PushoverClient {
      * @param executorService caller-managed executor used for async work
      * @return future completing with the acknowledged receipt payload
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public CompletableFuture<ReceiptStatusResponse> sendEmergencyMessageAndAwaitAcknowledgement(
             MessageRequest request,
@@ -211,7 +205,6 @@ public class PushoverClient {
      * @param futureExpiration override expiration for the returned future
      * @return future completing with the acknowledged receipt payload
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public CompletableFuture<ReceiptStatusResponse> sendEmergencyMessageAndAwaitAcknowledgement(
             MessageRequest request,
@@ -243,7 +236,6 @@ public class PushoverClient {
      * @param executorService caller-managed executor used for async work
      * @return future completing with the callback payload
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public CompletableFuture<ReceiptCallbackResponse> sendEmergencyMessageAndAwaitCallback(
             MessageRequest request,
@@ -260,7 +252,6 @@ public class PushoverClient {
      * @param futureExpiration override expiration for the returned future
      * @return future completing with the callback payload
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public CompletableFuture<ReceiptCallbackResponse> sendEmergencyMessageAndAwaitCallback(
             MessageRequest request,
@@ -295,7 +286,6 @@ public class PushoverClient {
      *
      * @param callbackResponse parsed callback payload delivered by a host-managed adapter
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public void acceptCallbackReceipt(ReceiptCallbackResponse callbackResponse) {
         handleCallbackReceipt(Objects.requireNonNull(callbackResponse, "callbackResponse is required"));
@@ -309,7 +299,6 @@ public class PushoverClient {
      * @throws InterruptedException when the call is interrupted
      * @throws PushoverApiException when Pushover returns a non-success response
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public SoundsResponse getSounds() throws IOException, InterruptedException {
         LOGGER.debug("Fetching sounds from endpoint={}", PushoverEndpoints.SOUNDS);
@@ -324,7 +313,6 @@ public class PushoverClient {
      * @throws InterruptedException when the call is interrupted
      * @throws PushoverApiException when Pushover returns a non-success response
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public LimitsResponse getLimits() throws IOException, InterruptedException {
         LOGGER.debug("Fetching limits from endpoint={}", PushoverEndpoints.LIMITS);
@@ -341,7 +329,6 @@ public class PushoverClient {
      * @throws PushoverClientException when the receipt id is invalid
      * @throws PushoverApiException when Pushover returns a non-success response
      * @since 0.2.0
-     * @author Christian Barbati
      */
     public ReceiptStatusResponse getReceipt(String receiptId) throws IOException, InterruptedException {
         String normalizedReceiptId = requireReceiptId(receiptId);
@@ -359,7 +346,6 @@ public class PushoverClient {
      * @throws PushoverClientException when the receipt id is invalid
      * @throws PushoverApiException when Pushover returns a non-success response
      * @since 0.2.0
-     * @author Christian Barbati
      */
     public ReceiptCancellationResponse cancelReceipt(String receiptId) throws IOException, InterruptedException {
         String normalizedReceiptId = requireReceiptId(receiptId);
@@ -383,7 +369,6 @@ public class PushoverClient {
      * @throws PushoverClientException when the tag is blank
      * @throws PushoverApiException when Pushover returns a non-success response
      * @since 0.2.0
-     * @author Christian Barbati
      */
     public ReceiptCancellationResponse cancelByTag(String tag) throws IOException, InterruptedException {
         String normalizedTag = requireTag(tag);
@@ -404,7 +389,6 @@ public class PushoverClient {
      * @return ordered key/value map for request encoding
      * @throws PushoverClientException when encrypted mode is requested without a key
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private Map<String, String> buildMessageFields(MessageRequest request) {
         Map<String, String> fields = new LinkedHashMap<>();
@@ -472,7 +456,6 @@ public class PushoverClient {
      * @param key API field name
      * @param value plaintext field value
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private void putEncryptedIfPresent(Map<String, String> fields, String key, String value) {
         if (!isBlank(value)) {
@@ -487,7 +470,6 @@ public class PushoverClient {
      * @param fields request key/value fields
      * @return configured HTTP request
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private HttpRequest buildFormRequest(String path, Map<String, String> fields) {
         String body = encodeFormBody(fields);
@@ -506,7 +488,6 @@ public class PushoverClient {
      * @param attachment attachment payload
      * @return configured HTTP request
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private HttpRequest buildMultipartRequest(String path, Map<String, String> fields, Attachment attachment) {
         String boundary = "----PushoverClient" + UUID.randomUUID();
@@ -524,7 +505,6 @@ public class PushoverClient {
      * @param path endpoint path
      * @return resolved URI
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private URI buildUri(String path) {
         return URI.create(baseUrl + path);
@@ -540,7 +520,6 @@ public class PushoverClient {
      * @throws IOException when the HTTP call fails
      * @throws InterruptedException when the call is interrupted
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private <T> T getJson(String path, Class<T> responseType) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(buildUri(path + "?token=" + encode(appToken)))
@@ -561,7 +540,6 @@ public class PushoverClient {
      * @throws IOException when the HTTP call fails
      * @throws InterruptedException when the call is interrupted
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private <T> T postForm(String path, Map<String, String> fields, Class<T> responseType) throws IOException, InterruptedException {
         Map<String, String> requestFields = new LinkedHashMap<>();
@@ -580,7 +558,6 @@ public class PushoverClient {
      * @throws IOException when the HTTP call fails
      * @throws InterruptedException when the call is interrupted
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private <T> T send(HttpRequest httpRequest, Class<T> responseType) throws IOException, InterruptedException {
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -597,7 +574,6 @@ public class PushoverClient {
      * @throws PushoverApiException when API returns an error response body
      * @throws PushoverClientException when response parsing fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private <T> T parseResponse(HttpResponse<String> response, Class<T> responseType) {
         try {
@@ -648,7 +624,6 @@ public class PushoverClient {
      * @param value parsed success payload
      * @return status when available, otherwise null
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private static Integer extractStatus(Object value) {
         if (value instanceof MessageResponse messageResponse) {
@@ -675,7 +650,6 @@ public class PushoverClient {
      * @param value parsed success payload
      * @return request id when available, otherwise null
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private static String extractRequestId(Object value) {
         if (value instanceof MessageResponse messageResponse) {
@@ -910,7 +884,6 @@ public class PushoverClient {
      * @param fields request fields
      * @return encoded body text
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static String encodeFormBody(Map<String, String> fields) {
         List<String> pairs = new ArrayList<>();
@@ -931,7 +904,6 @@ public class PushoverClient {
      * @return serialized multipart bytes
      * @throws PushoverClientException when multipart serialization fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] multipartBody(Map<String, String> fields, Attachment attachment, String boundary) {
         String separator = "--" + boundary + "\r\n";
@@ -970,7 +942,6 @@ public class PushoverClient {
      * @param request message request to validate
      * @throws PushoverClientException when one or more constraints are violated
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private void validate(MessageRequest request) {
         Objects.requireNonNull(request, "request is required");
@@ -1045,7 +1016,6 @@ public class PushoverClient {
      * @param key field name
      * @param value field value
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static void putIfPresent(Map<String, String> fields, String key, String value) {
         if (!isBlank(value)) {
@@ -1061,7 +1031,6 @@ public class PushoverClient {
      * @return original input when non-blank
      * @throws PushoverClientException when value is blank
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static String requireNonBlank(String value, String message) {
         if (isBlank(value)) {
@@ -1081,7 +1050,6 @@ public class PushoverClient {
      * @return normalized receipt id
      * @throws PushoverClientException when the receipt id is blank or malformed
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private static String requireReceiptId(String receiptId) {
         String normalized = requireNonBlank(receiptId, "receiptId is required").trim();
@@ -1098,7 +1066,6 @@ public class PushoverClient {
      * @return normalized tag
      * @throws PushoverClientException when the tag is blank
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private static String requireTag(String tag) {
         return requireNonBlank(tag, "tag is required").trim();
@@ -1110,7 +1077,6 @@ public class PushoverClient {
      * @param value input string
      * @return true when null or blank
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
@@ -1122,7 +1088,6 @@ public class PushoverClient {
      * @param value unescaped input
      * @return URL-encoded string
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
@@ -1134,7 +1099,6 @@ public class PushoverClient {
      * @param value unescaped path segment
      * @return encoded path segment
      * @since 0.2.0
-     * @author Christian Barbati
      */
     private static String encodePathSegment(String value) {
         return encode(value).replace("+", "%20");
@@ -1148,3 +1112,4 @@ public class PushoverClient {
     private record PendingReceiptFuture<T>(CompletableFuture<T> future, Set<String> tags) {
     }
 }
+

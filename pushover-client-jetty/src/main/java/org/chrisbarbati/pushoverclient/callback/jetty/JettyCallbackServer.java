@@ -33,7 +33,6 @@ public final class JettyCallbackServer implements CallbackServer {
      * @param bindUri local URI to bind, for example {@code http://0.0.0.0:8080/pushover/callback}
      * @param executorService executor used by Jetty so thread ownership remains caller-controlled
      * @since 0.3.0
-     * @author Christian Barbati
      */
     public JettyCallbackServer(URI bindUri, ExecutorService executorService) {
         this.bindUri = validateBindUri(bindUri);
@@ -106,6 +105,7 @@ public final class JettyCallbackServer implements CallbackServer {
         ));
     }
 }
+
 
 
 

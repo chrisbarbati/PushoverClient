@@ -40,7 +40,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_getSounds() throws Exception {
@@ -55,7 +54,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_getLimits() throws Exception {
@@ -70,7 +68,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_sendMessage() throws Exception {
@@ -91,7 +88,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_sendEncryptedMessageWhenKeyPresent() throws Exception {
@@ -119,7 +115,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_sendMessage_withMultipartAttachment() throws Exception {
@@ -142,7 +137,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_sendMessage_withBase64Attachment() throws Exception {
@@ -164,7 +158,6 @@ class PushoverClientIT {
      * Verifies an intentionally invalid user key produces API failure response.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_failure_invalidUserKey_returnsApiError() {
@@ -189,7 +182,6 @@ class PushoverClientIT {
      * Verifies an intentionally invalid token produces API failure response.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_failure_invalidTokenOnSounds_returnsApiError() {
@@ -212,7 +204,6 @@ class PushoverClientIT {
      * @param prefix property key prefix
      * @return attachment resource data
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static AttachmentResource requiredAttachmentResource(String prefix) {
         String pathValue = optional(prefix + ".path");
@@ -282,7 +273,6 @@ class PushoverClientIT {
      * @param key property key
      * @return resolved non-blank value
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static String required(String key) {
         String value = optional(key);
@@ -300,7 +290,6 @@ class PushoverClientIT {
      * @param key property key
      * @return value when configured, otherwise null/blank
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static String optional(String key) {
         String sys = System.getProperty(key);
@@ -321,7 +310,6 @@ class PushoverClientIT {
      *
      * @return loaded properties, possibly empty
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static Properties loadConfig() {
         Properties props = new Properties();
@@ -343,7 +331,6 @@ class PushoverClientIT {
      * @param value candidate string
      * @return true when the value is null or blank
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
@@ -356,7 +343,6 @@ class PushoverClientIT {
      * @param contentType MIME type for upload
      * @param bytes attachment bytes
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private record AttachmentResource(String fileName, String contentType, byte[] bytes) {
     }
@@ -366,7 +352,6 @@ class PushoverClientIT {
      *
      * @throws Exception when the API call fails unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void live_sendMessage_withDeviceSoundAndTimestamp() throws Exception {
@@ -399,7 +384,6 @@ class PushoverClientIT {
      * @apiNote This test is opt-in because emergency notifications can be disruptive.
      * @throws Exception when the API call fails unexpectedly
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void live_receiptsLifecycle_withEmergencyMessage_whenEnabled() throws Exception {
@@ -461,3 +445,4 @@ class PushoverClientIT {
         }
     }
 }
+

@@ -22,9 +22,9 @@ final class PushoverEndpoints {
      * Utility class.
      *
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private PushoverEndpoints() {
     }
 }
+
 

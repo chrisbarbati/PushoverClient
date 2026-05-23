@@ -33,7 +33,6 @@ public final class JettyCallbackHandlers {
      * @param callbackHandler consumer invoked for each successfully parsed callback payload
      * @return Jetty handler suitable for host-managed lifecycle usage
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static Handler create(String callbackPath, Consumer<ReceiptCallbackResponse> callbackHandler) {
         return new CallbackHandler(normalizePath(callbackPath), callbackHandler);
@@ -46,7 +45,6 @@ public final class JettyCallbackHandlers {
      * @param client client whose pending callback futures should be completed
      * @return Jetty handler suitable for host-managed lifecycle usage
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static Handler create(String callbackPath, PushoverClient client) {
         Objects.requireNonNull(client, "client is required");
@@ -60,7 +58,6 @@ public final class JettyCallbackHandlers {
      * @param callbackHandler consumer invoked for each successfully parsed callback payload
      * @return Jetty handler suitable for host-managed lifecycle usage
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static Handler create(URI callbackUri, Consumer<ReceiptCallbackResponse> callbackHandler) {
         Objects.requireNonNull(callbackUri, "callbackUri is required");
@@ -74,7 +71,6 @@ public final class JettyCallbackHandlers {
      * @param client client whose pending callback futures should be completed
      * @return Jetty handler suitable for host-managed lifecycle usage
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static Handler create(URI callbackUri, PushoverClient client) {
         Objects.requireNonNull(client, "client is required");
@@ -127,5 +123,6 @@ public final class JettyCallbackHandlers {
         }
     }
 }
+
 
 

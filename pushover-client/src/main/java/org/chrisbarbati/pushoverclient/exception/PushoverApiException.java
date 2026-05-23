@@ -21,7 +21,6 @@ public class PushoverApiException extends PushoverClientException {
      * @param requestId Pushover request identifier used for support/tracing
      * @param errors API validation errors, if provided
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public PushoverApiException(String message, int httpStatus, String requestId, List<String> errors) {
         super(message);
@@ -33,7 +32,6 @@ public class PushoverApiException extends PushoverClientException {
     /**
      * @return HTTP status code from Pushover
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public int getHttpStatus() {
         return httpStatus;
@@ -42,7 +40,6 @@ public class PushoverApiException extends PushoverClientException {
     /**
      * @return unique Pushover request identifier
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public String getRequestId() {
         return requestId;
@@ -51,10 +48,10 @@ public class PushoverApiException extends PushoverClientException {
     /**
      * @return immutable list of API error messages
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public List<String> getErrors() {
         return errors;
     }
 }
+
 

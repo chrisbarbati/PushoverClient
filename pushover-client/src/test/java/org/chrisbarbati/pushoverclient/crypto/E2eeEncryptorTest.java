@@ -28,7 +28,6 @@ class E2eeEncryptorTest {
      *
      * @throws Exception when cryptography primitives fail unexpectedly
      * @since 0.1.0
-     * @author Christian Barbati
      */
     @Test
     void encryptField_roundTripsWithSpecAlgorithm() throws Exception {
@@ -50,7 +49,6 @@ class E2eeEncryptorTest {
      * @return decrypted plaintext
      * @throws Exception when decryption or decompression fails
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private String decrypt(String encryptedBase64, String keyHex) throws Exception {
         byte[] payload = Base64.getDecoder().decode(encryptedBase64);
@@ -81,7 +79,6 @@ class E2eeEncryptorTest {
      * @param right right bytes
      * @return concatenated bytes
      * @since 0.1.0
-     * @author Christian Barbati
      */
     private static byte[] concat(byte[] left, byte[] right) {
         byte[] result = new byte[left.length + right.length];
@@ -90,4 +87,5 @@ class E2eeEncryptorTest {
         return result;
     }
 }
+
 

@@ -23,7 +23,6 @@ public final class CallbackPayloadParser {
      * @param body raw request body
      * @return immutable ordered field map
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static Map<String, String> parseFormEncodedFields(String body) {
         Map<String, String> values = new LinkedHashMap<>();
@@ -49,10 +48,10 @@ public final class CallbackPayloadParser {
      * @param body raw request body
      * @return typed callback response
      * @since 0.4.0
-     * @author Christian Barbati
      */
     public static ReceiptCallbackResponse parseFormEncodedBody(String body) {
         return ReceiptCallbackResponse.fromFields(parseFormEncodedFields(body));
     }
 }
+
 

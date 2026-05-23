@@ -23,7 +23,6 @@ class ReceiptResponseModelTest {
      *
      * @throws Exception when JSON parsing fails unexpectedly
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void receiptStatusResponse_deserializesAllDocumentedFields() throws Exception {
@@ -65,7 +64,6 @@ class ReceiptResponseModelTest {
      *
      * @throws Exception when JSON parsing fails unexpectedly
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void receiptCancellationResponse_deserializesStatusAndRequest() throws Exception {
@@ -83,7 +81,6 @@ class ReceiptResponseModelTest {
      *
      * @throws Exception when JSON parsing fails unexpectedly
      * @since 0.2.0
-     * @author Christian Barbati
      */
     @Test
     void receiptStatusResponse_allowsMissingOptionalFields() throws Exception {
@@ -105,7 +102,6 @@ class ReceiptResponseModelTest {
      * Verifies callback POST form fields map onto the typed callback response model.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void receiptCallbackResponse_fromFields_mapsTypedValues() {
@@ -128,7 +124,6 @@ class ReceiptResponseModelTest {
      * Verifies alternate receipt field names can still be mapped from callback POST payloads.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void receiptCallbackResponse_fromFields_acceptsAlternateReceiptKey() {
@@ -145,12 +140,12 @@ class ReceiptResponseModelTest {
      * Verifies malformed callback payloads fail fast when the required receipt field is absent.
      *
      * @since 0.3.0
-     * @author Christian Barbati
      */
     @Test
     void receiptCallbackResponse_fromFields_requiresReceipt() {
         assertThrows(RuntimeException.class, () -> ReceiptCallbackResponse.fromFields(Map.of("acknowledged", "1")));
     }
 }
+
 
 

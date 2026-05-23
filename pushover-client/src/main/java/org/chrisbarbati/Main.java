@@ -17,7 +17,6 @@ public class Main {
      *
      * @param args optional message text; defaults to a sample message when empty
      * @since 0.1.0
-     * @author Christian Barbati
      */
     public static void main(String[] args) {
         // Keep credentials out of source by loading from environment.
