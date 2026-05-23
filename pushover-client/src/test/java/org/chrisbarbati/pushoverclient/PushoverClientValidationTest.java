@@ -73,6 +73,21 @@ class PushoverClientValidationTest {
     }
 
     /**
+     * Verifies encrypted message submission fails fast when the client has no encryption key configured.
+     *
+     * @since 0.5.0
+     */
+    @Test
+    void sendMessage_rejectsEncryptedMessageWithoutConfiguredKey() {
+        PushoverClient client = new PushoverClient(TOKEN);
+        MessageRequest request = MessageRequest.builder(USER, "hello")
+                .encrypted(true)
+                .build();
+
+        assertThrows(PushoverClientException.class, () -> client.sendMessage(request));
+    }
+
+    /**
      * Verifies blank receipt ids are rejected before receipt lookup network calls.
      *
      * @since 0.2.0
@@ -157,6 +172,78 @@ class PushoverClientValidationTest {
         } finally {
             executorService.shutdownNow();
         }
+    }
+
+    /**
+     * Verifies polling async flows reject non-positive expiration overrides before background work starts.
+     *
+     * @since 0.5.0
+     */
+    @Test
+    void sendEmergencyMessageAndAwaitAcknowledgement_rejectsNonPositiveOverrideExpiration() {
+        PushoverClient client = new PushoverClient(TOKEN);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        try {
+            assertThrows(
+                    PushoverClientException.class,
+                    () -> client.sendEmergencyMessageAndAwaitAcknowledgement(
+                            emergencyRequest(),
+                            executorService,
+                            java.time.Duration.ZERO
+                    )
+            );
+            assertThrows(
+                    PushoverClientException.class,
+                    () -> client.sendEmergencyMessageAndAwaitAcknowledgement(
+                            emergencyRequest(),
+                            executorService,
+                            java.time.Duration.ofSeconds(-1)
+                    )
+            );
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    /**
+     * Verifies callback async flows reject non-positive expiration overrides before background work starts.
+     *
+     * @since 0.5.0
+     */
+    @Test
+    void sendEmergencyMessageAndAwaitCallback_rejectsNonPositiveOverrideExpiration() {
+        PushoverClient client = new PushoverClient(TOKEN);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        try {
+            assertThrows(
+                    PushoverClientException.class,
+                    () -> client.sendEmergencyMessageAndAwaitCallback(
+                            emergencyRequest(),
+                            executorService,
+                            java.time.Duration.ZERO
+                    )
+            );
+            assertThrows(
+                    PushoverClientException.class,
+                    () -> client.sendEmergencyMessageAndAwaitCallback(
+                            emergencyRequest(),
+                            executorService,
+                            java.time.Duration.ofSeconds(-1)
+                    )
+            );
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    private static MessageRequest emergencyRequest() {
+        return MessageRequest.builder(USER, "hello")
+                .priority(MessagePriority.EMERGENCY)
+                .retry(30)
+                .expire(300)
+                .build();
     }
 }
 
