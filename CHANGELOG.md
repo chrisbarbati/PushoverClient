@@ -4,7 +4,15 @@ All user-facing API coverage changes for this project are tracked here.
 
 ## [0.4.0] - 2026-05-21
 ### Added
-- Multi-module layout separating the core client artifact from the optional Jetty callback implementation artifact
+- Multi-module layout separating the core client artifact from optional servlet and Jetty callback integration artifacts
+- Generic host-managed servlet callback adapter via `CallbackServlets` in the optional `pushover-client-servlet` artifact
+- Shared callback payload parsing in core so servlet and Jetty callback adapters reuse the same form-decoding logic
+- Jetty-native host-managed callback handler support via `JettyCallbackHandlers` in `pushover-client-jetty`
+- Live async acknowledgement integration coverage for the optional servlet callback adapter using the existing async integration properties
+
+### Changed
+- `sendEmergencyMessageAndAwaitCallback(...)` now works with either host-managed callback URLs (`request.callback(...)` / `AsyncReceiptProperties.defaultCallbackUrl(...)`) or a self-managed `CallbackServer`
+- README lifecycle guidance now distinguishes when to choose host-managed callback mounting versus self-managed `CallbackServer` lifecycle
 
 ## [0.3.0] - 2026-05-19
 

@@ -18,6 +18,7 @@
 
     <modules>
         <module>pushover-client</module>
+        <module>pushover-client-servlet</module>
         <module>pushover-client-jetty</module>
     </modules>
 

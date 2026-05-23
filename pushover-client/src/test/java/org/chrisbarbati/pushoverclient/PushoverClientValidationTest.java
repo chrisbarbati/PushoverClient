@@ -5,9 +5,11 @@ import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -138,13 +140,13 @@ class PushoverClientValidationTest {
     }
 
     /**
-     * Verifies the callback async flow fails fast when no callback server is configured.
+     * Verifies the callback async flow fails when neither a callback URL nor a callback server is configured.
      *
      * @since 0.3.0
      * @author Christian Barbati
      */
     @Test
-    void sendEmergencyMessageAndAwaitCallback_requiresCallbackServer() {
+    void sendEmergencyMessageAndAwaitCallback_requiresCallbackConfiguration() {
         PushoverClient client = new PushoverClient(TOKEN);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -155,10 +157,11 @@ class PushoverClientValidationTest {
                     .expire(300)
                     .build();
 
-            assertThrows(
-                    PushoverClientException.class,
-                    () -> client.sendEmergencyMessageAndAwaitCallback(request, executorService)
+            ExecutionException ex = assertThrows(
+                    ExecutionException.class,
+                    () -> client.sendEmergencyMessageAndAwaitCallback(request, executorService).get()
             );
+            assertInstanceOf(PushoverClientException.class, ex.getCause());
         } finally {
             executorService.shutdownNow();
         }

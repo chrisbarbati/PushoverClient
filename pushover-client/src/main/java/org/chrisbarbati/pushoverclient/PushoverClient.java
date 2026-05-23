@@ -237,7 +237,7 @@ public class PushoverClient {
     }
 
     /**
-     * Sends an emergency message and completes the future when the configured callback server receives Pushover's POST.
+     * Sends an emergency message and completes the future when a configured callback endpoint delivers Pushover's POST back into this client.
      *
      * @param request emergency message request
      * @param executorService caller-managed executor used for async work
@@ -253,7 +253,7 @@ public class PushoverClient {
     }
 
     /**
-     * Sends an emergency message and completes the future when the configured callback server receives Pushover's POST.
+     * Sends an emergency message and completes the future when a configured callback endpoint delivers Pushover's POST back into this client.
      *
      * @param request emergency message request
      * @param executorService caller-managed executor used for async work
@@ -267,9 +267,6 @@ public class PushoverClient {
             ExecutorService executorService,
             Duration futureExpiration
     ) {
-        if (callbackServer == null) {
-            throw new PushoverClientException("A callbackServer is required for callback-based asynchronous receipt handling");
-        }
         MessageRequest emergencyRequest = requireEmergencyRequest(request, "sendEmergencyMessageAndAwaitCallback");
         ExecutorService executor = Objects.requireNonNull(executorService, "executorService is required");
         Duration expiration = resolveFutureExpiration(
@@ -280,7 +277,9 @@ public class PushoverClient {
 
         CompletableFuture<ReceiptCallbackResponse> future = new CompletableFuture<>();
         submitAsyncTask(executor, future, () -> {
-            ensureCallbackServerStarted();
+            if (callbackServer != null) {
+                ensureCallbackServerStarted();
+            }
             MessageRequest callbackRequest = withResolvedCallback(emergencyRequest);
             MessageResponse response = sendMessage(callbackRequest);
             String receiptId = requireAsyncReceipt(response);
@@ -288,6 +287,18 @@ public class PushoverClient {
             monitorFutureExpiration(receiptId, future, expiration, executor, pendingCallbackFutures, "callback");
         });
         return future;
+    }
+
+
+    /**
+     * Accepts a parsed callback payload and completes any matching callback-based futures managed by this client.
+     *
+     * @param callbackResponse parsed callback payload delivered by a host-managed adapter
+     * @since 0.4.0
+     * @author Christian Barbati
+     */
+    public void acceptCallbackReceipt(ReceiptCallbackResponse callbackResponse) {
+        handleCallbackReceipt(Objects.requireNonNull(callbackResponse, "callbackResponse is required"));
     }
 
     /**
@@ -804,7 +815,7 @@ public class PushoverClient {
             throw new PushoverClientException(
                     "A callback URL is required for callback-based asynchronous receipt handling; configure "
                             + AsyncReceiptProperties.DEFAULT_CALLBACK_URL_PROPERTY
-                            + " or provide request.callback()"
+                            + ", provide request.callback(), or configure a callbackServer"
             );
         }
 

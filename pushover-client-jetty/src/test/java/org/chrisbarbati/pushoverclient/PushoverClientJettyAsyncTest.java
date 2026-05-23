@@ -87,6 +87,7 @@ class PushoverClientJettyAsyncTest {
             var future = client.sendEmergencyMessageAndAwaitCallback(emergencyRequest(), executorService);
             RecordedRequest sendRequest = server.takeRequest();
             assertTrue(sendRequest.getBody().readUtf8().contains("callback=" + encode(callbackServer.callbackUri().toString())));
+            awaitPendingFutureCount(client, "pendingCallbackFutures", 1);
 
             postCallback(callbackServer.callbackUri(),
                     "receipt=" + RECEIPT + "&acknowledged=1&acknowledged_at=1715800000&acknowledged_by=chris");
@@ -134,6 +135,7 @@ class PushoverClientJettyAsyncTest {
             String body = sendRequest.getBody().readUtf8();
             assertTrue(body.contains("callback=" + encode(localCallbackUri.toString())));
             assertFalse(body.contains(encode("https://default.example/pushover/callback")));
+            awaitPendingFutureCount(client, "pendingCallbackFutures", 1);
 
             postCallback(localCallbackUri, "receipt=" + RECEIPT + "&acknowledged=1&acknowledged_by=override-user");
             ReceiptCallbackResponse response = future.get(2, TimeUnit.SECONDS);
