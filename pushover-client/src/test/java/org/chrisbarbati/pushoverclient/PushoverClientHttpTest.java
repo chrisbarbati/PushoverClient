@@ -4,6 +4,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.chrisbarbati.pushoverclient.exception.PushoverApiException;
+import org.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import org.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import org.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
@@ -283,6 +284,43 @@ class PushoverClientHttpTest {
         assertEquals(400, ex.getHttpStatus());
         assertEquals("req-fail", ex.getRequestId());
         assertEquals("user identifier is invalid", ex.getErrors().get(0));
+    }
+
+    /**
+     * Verifies malformed JSON in otherwise successful responses maps to {@link PushoverClientException}.
+     *
+     * @since 0.5.0
+     */
+    @Test
+    void sendMessage_throwsClientExceptionOnMalformedSuccessPayload() {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("not-json"));
+
+        PushoverClientException ex = assertThrows(
+                PushoverClientException.class,
+                () -> client.sendMessage(MessageRequest.builder(USER, "plain message").build())
+        );
+
+        assertEquals("Failed to parse API response", ex.getMessage());
+    }
+
+    /**
+     * Verifies HTTP 2xx responses that still report {@code status=0} map to {@link PushoverApiException}.
+     *
+     * @since 0.5.0
+     */
+    @Test
+    void sendMessage_throwsApiExceptionWhenHttpSuccessReportsFailureStatus() {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":0,\"request\":\"req-soft-fail\"}"));
+
+        PushoverApiException ex = assertThrows(
+                PushoverApiException.class,
+                () -> client.sendMessage(MessageRequest.builder(USER, "plain message").build())
+        );
+
+        assertEquals(200, ex.getHttpStatus());
+        assertEquals("req-soft-fail", ex.getRequestId());
+        assertEquals(java.util.List.of("status != 1"), ex.getErrors());
     }
 
     /**

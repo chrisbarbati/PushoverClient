@@ -4,6 +4,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import org.chrisbarbati.pushoverclient.callback.CallbackServer;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.util.Map;
 import java.time.Duration;
@@ -233,6 +235,54 @@ class PushoverClientAsyncTest {
         }
     }
 
+    /**
+     * Verifies callback-based async flows fall back to the callback server URI when no request or default callback URL is configured.
+     *
+     * @throws Exception when the test fails unexpectedly
+     * @since 0.5.0
+     */
+    @Test
+    void sendEmergencyMessageAndAwaitCallback_usesCallbackServerUriWhenNoRequestOrDefaultCallbackIsConfigured() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-send\",\"receipt\":\"" + RECEIPT + "\"}"));
+
+        AsyncReceiptProperties properties = AsyncReceiptProperties.builder()
+                .pollInterval(Duration.ofMillis(10))
+                .callbackFutureExpiration(Duration.ofSeconds(2))
+                .build();
+        TestCallbackServer callbackServer = new TestCallbackServer(URI.create("https://callbacks.example.test/pushover/callback"));
+        PushoverClient client = new PushoverClient(
+                TOKEN,
+                null,
+                HttpClient.newHttpClient(),
+                server.url("/").toString().replaceAll("/$", ""),
+                properties,
+                callbackServer
+        );
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        try {
+            var future = client.sendEmergencyMessageAndAwaitCallback(emergencyRequest(), executorService);
+            RecordedRequest sendRequest = server.takeRequest();
+            assertNotNull(sendRequest);
+            assertTrue(sendRequest.getBody().readUtf8().contains("callback=https%3A%2F%2Fcallbacks.example.test%2Fpushover%2Fcallback"));
+            assertEquals(1, callbackServer.startCount);
+            awaitPendingFutureCount(client);
+
+            callbackServer.deliver(ReceiptCallbackResponse.fromFields(Map.of(
+                    "receipt", RECEIPT,
+                    "acknowledged", "1",
+                    "acknowledged_by", "callback-server"
+            )));
+
+            ReceiptCallbackResponse callbackResponse = future.get(2, TimeUnit.SECONDS);
+            assertEquals(RECEIPT, callbackResponse.receipt());
+            assertEquals("callback-server", callbackResponse.acknowledgedBy());
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
     private static MessageRequest emergencyRequest() {
         return MessageRequest.builder(USER, "Emergency async test")
                 .priority(MessagePriority.EMERGENCY)
@@ -254,6 +304,45 @@ class PushoverClientAsyncTest {
             Thread.sleep(10);
         }
         throw new AssertionError("Timed out waiting for pendingCallbackFutures to reach size 1");
+    }
+
+    private static final class TestCallbackServer implements CallbackServer {
+        private final URI callbackUri;
+
+        private java.util.function.Consumer<ReceiptCallbackResponse> callbackHandler;
+        private boolean running;
+        private int startCount;
+
+        private TestCallbackServer(URI callbackUri) {
+            this.callbackUri = callbackUri;
+        }
+
+        @Override
+        public void start(java.util.function.Consumer<ReceiptCallbackResponse> callbackHandler) {
+            this.callbackHandler = callbackHandler;
+            this.running = true;
+            this.startCount++;
+        }
+
+        @Override
+        public void stop() {
+            this.running = false;
+        }
+
+        @Override
+        public boolean isRunning() {
+            return running;
+        }
+
+        @Override
+        public URI callbackUri() {
+            return callbackUri;
+        }
+
+        private void deliver(ReceiptCallbackResponse callbackResponse) {
+            assertNotNull(callbackHandler);
+            callbackHandler.accept(callbackResponse);
+        }
     }
 }
 

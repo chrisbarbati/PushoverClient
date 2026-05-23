@@ -23,9 +23,23 @@ See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
 ## Releases
 
+- Shared artifact versioning uses the root Maven `revision` property in [`pom.xml`](pom.xml). That value becomes the version for every module in the reactor.
+- Version numbers follow a semantic `major.minor.patch` scheme:
+  - `major`: incompatible public API changes or breaking behavior changes, or other major release milestones
+  - `minor`: backward-compatible features, endpoint coverage additions, or meaningful new capabilities
+  - `patch`: backward-compatible fixes, polish, or small behavioral corrections that are worth publishing
+- Bump `revision` when you intend to publish a new stable artifact version, typically for user-facing API changes, behavior changes, dependency/runtime changes worth releasing, or other intentional release cuts.
+- Do **not** bump `revision` for test-only changes, local-only workflow notes, or other repository maintenance that does not change the published artifacts' intended semantic version.
 - Successful pushes to `main` publish a stable GitHub release tagged as `v<revision>`, using the root Maven `revision` from [`pom.xml`](pom.xml).
 - If `main` is rebuilt without changing `revision`, the existing versioned release is refreshed in place and its assets are overwritten.
 - Successful pushes to `main` also update a separate moving prerelease feed tagged `rolling-main-prerelease` with the latest tested reactor JARs.
+
+In practice, this gives the repository two release tracks:
+
+- Stable, version-labeled releases: `v<revision>`
+- Moving prerelease feed: `rolling-main-prerelease`
+
+If you only add or improve tests, prefer keeping `revision` unchanged unless you are intentionally cutting a new stable release for some other reason.
 
 ## Quick run
 
