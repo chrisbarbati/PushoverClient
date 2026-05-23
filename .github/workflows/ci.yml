@@ -47,12 +47,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          project_version='${{ steps.project-version.outputs.value }}'
           mkdir -p release-assets
-          find pushover-client/target pushover-client-servlet/target pushover-client-jetty/target \
-            -maxdepth 1 \
-            -type f \
-            -name '*.jar' \
-            -exec cp {} release-assets/ \;
+          for module in pushover-client pushover-client-servlet pushover-client-jetty pushover-client-tomcat; do
+            artifact_path="${module}/target/${module}-${project_version}.jar"
+            if [[ ! -f "${artifact_path}" ]]; then
+              echo "Expected release artifact not found: ${artifact_path}" >&2
+              exit 1
+            fi
+            cp "${artifact_path}" release-assets/
+          done
           find release-assets -maxdepth 1 -type f -name '*.jar' -print | sort
 
       - name: Upload built jars
@@ -62,8 +66,8 @@ jobs:
           if-no-files-found: error
           path: release-assets/*.jar
 
-  rolling-prerelease:
-    name: rolling-prerelease
+  publish-releases:
+    name: publish-releases
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - verify
@@ -71,7 +75,8 @@ jobs:
     permissions:
       contents: write
     env:
-      ROLLING_TAG: rolling-main
+      RELEASE_TAG: v${{ needs.verify.outputs.project-version }}
+      ROLLING_TAG: rolling-main-prerelease
       PROJECT_VERSION: ${{ needs.verify.outputs.project-version }}
     steps:
       - name: Check out repository
@@ -91,6 +96,35 @@ jobs:
           set -euo pipefail
           find release-assets -maxdepth 1 -type f -name '*.jar' -print | sort
 
+      - name: Move stable release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "${RELEASE_TAG}" -m "Release ${PROJECT_VERSION} for ${GITHUB_SHA}" "${GITHUB_SHA}"
+          git push origin "refs/tags/${RELEASE_TAG}" --force
+
+      - name: Publish stable release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Release ${{ env.PROJECT_VERSION }}
+          prerelease: false
+          make_latest: true
+          target_commitish: ${{ github.sha }}
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: release-assets/*.jar
+          body: |
+            Automated stable release for revision `${{ env.PROJECT_VERSION }}` from `main`.
+
+            - Tag: `${{ env.RELEASE_TAG }}`
+            - Commit: `${{ github.sha }}`
+            - Assets: tested reactor JARs from the `verify` job
+
+            If `main` is rebuilt without a revision bump, this versioned release is refreshed in place and its assets are overwritten.
+
       - name: Move rolling prerelease tag
         shell: bash
         run: |
@@ -104,7 +138,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.ROLLING_TAG }}
-          name: Rolling prerelease ${{ env.PROJECT_VERSION }}
+          name: Rolling prerelease main (${{ env.PROJECT_VERSION }})
           prerelease: true
           make_latest: false
           target_commitish: ${{ github.sha }}
@@ -112,11 +146,12 @@ jobs:
           fail_on_unmatched_files: true
           files: release-assets/*.jar
           body: |
-            Automated rolling prerelease for the latest successful push to `main`.
+            Automated moving prerelease feed for the latest successful push to `main`.
 
             - Version: `${{ env.PROJECT_VERSION }}`
+            - Tag: `${{ env.ROLLING_TAG }}`
             - Commit: `${{ github.sha }}`
             - Assets: tested reactor JARs from the `verify` job
 
-            This workflow is intentionally split into build/artifact/release stages so signing and Maven Central deploy steps can be added later without redesigning the pipeline.
+            This prerelease is intentionally separate from the stable `v${{ env.PROJECT_VERSION }}` release so consumers can choose between version-labeled releases and a moving latest-main feed.
 

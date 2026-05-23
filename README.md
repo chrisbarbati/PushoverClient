@@ -21,6 +21,12 @@ Java client for the Pushover REST API.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
+## Releases
+
+- Successful pushes to `main` publish a stable GitHub release tagged as `v<revision>`, using the root Maven `revision` from [`pom.xml`](pom.xml).
+- If `main` is rebuilt without changing `revision`, the existing versioned release is refreshed in place and its assets are overwritten.
+- Successful pushes to `main` also update a separate moving prerelease feed tagged `rolling-main-prerelease` with the latest tested reactor JARs.
+
 ## Quick run
 
 Set credentials, then run the small harness in `Main`.
