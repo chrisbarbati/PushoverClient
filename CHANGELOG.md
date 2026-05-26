@@ -2,6 +2,16 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.6.0] - 2026-05-23
+### Added
+- User/group validation support via `POST /1/users/validate.json`
+- Validation response model exposing returned `devices` and `licenses` arrays
+- MockWebServer and opt-in live integration coverage for configured user/group validation flows
+
+### Changed
+- HTTP 2xx responses that still report `status=0` now preserve API-provided `errors` when available before raising `PushoverApiException`
+- README scope and usage examples now include verification-only user/group support while keeping group-management APIs out of scope
+
 ## [0.5.0] - 2026-05-23
 ### Added
 - GitHub Actions automation that runs the full Maven reactor on every push and pull request
