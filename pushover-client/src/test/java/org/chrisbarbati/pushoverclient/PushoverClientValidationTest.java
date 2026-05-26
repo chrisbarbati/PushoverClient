@@ -88,6 +88,43 @@ class PushoverClientValidationTest {
     }
 
     /**
+     * Verifies blank user/group identifiers are rejected before validation network calls.
+     *
+     * @since 0.6.0
+     */
+    @Test
+    void validateUserOrGroup_rejectsBlankIdentifier() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.validateUserOrGroup("   "));
+    }
+
+    /**
+     * Verifies malformed user/group identifiers are rejected before validation network calls.
+     *
+     * @since 0.6.0
+     */
+    @Test
+    void validateUserOrGroup_rejectsMalformedIdentifier() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.validateUserOrGroup("too-short"));
+    }
+
+    /**
+     * Verifies validation accepts only a single well-formed device name.
+     *
+     * @since 0.6.0
+     */
+    @Test
+    void validateUserOrGroup_rejectsInvalidDevice() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.validateUserOrGroup(USER, "   "));
+        assertThrows(PushoverClientException.class, () -> client.validateUserOrGroup(USER, "phone-1,tablet"));
+    }
+
+    /**
      * Verifies blank receipt ids are rejected before receipt lookup network calls.
      *
      * @since 0.2.0

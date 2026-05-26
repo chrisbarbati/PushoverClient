@@ -11,12 +11,14 @@ import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.SoundsResponse;
+import org.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -131,6 +133,48 @@ class PushoverClientHttpTest {
         String body = request.getBody().readUtf8();
         assertTrue(body.contains("attachment_base64=YWJj"));
         assertTrue(body.contains("attachment_type=image%2Fjpeg"));
+    }
+
+    /**
+     * Verifies user/group validation posts the expected form fields and parses success payloads.
+     *
+     * @throws Exception when request processing fails
+     * @since 0.6.0
+     */
+    @Test
+    void validateUserOrGroup_postsFormEncodedAndParsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-v\",\"devices\":[\"pixel-8\",\"ipad\"],\"licenses\":[\"android\",\"ios\"]}"));
+
+        UserGroupValidationResponse response = client.validateUserOrGroup(USER);
+
+        assertEquals(1, response.status());
+        assertEquals(List.of("pixel-8", "ipad"), response.devices());
+        assertEquals(List.of("android", "ios"), response.licenses());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/users/validate.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&user=" + USER, request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies user/group validation includes an optional device field when requested.
+     *
+     * @throws Exception when request processing fails
+     * @since 0.6.0
+     */
+    @Test
+    void validateUserOrGroup_withDevice_postsDeviceField() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-vd\",\"devices\":[\"phone_1\"],\"licenses\":[\"android\"]}"));
+
+        UserGroupValidationResponse response = client.validateUserOrGroup(USER, "phone_1");
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/users/validate.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&user=" + USER + "&device=phone_1", request.getBody().readUtf8());
     }
 
     /**
@@ -338,6 +382,23 @@ class PushoverClientHttpTest {
         assertEquals(401, ex.getHttpStatus());
         assertEquals("req-auth", ex.getRequestId());
         assertTrue(ex.getErrors().contains("application token is invalid"));
+    }
+
+    /**
+     * Verifies user/group validation failures map to {@link PushoverApiException}.
+     *
+     * @since 0.6.0
+     */
+    @Test
+    void validateUserOrGroup_throwsApiExceptionOnFailureResponse() {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":0,\"request\":\"req-v-fail\",\"errors\":[\"user identifier is invalid\"]}"));
+
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.validateUserOrGroup(USER));
+
+        assertEquals(200, ex.getHttpStatus());
+        assertEquals("req-v-fail", ex.getRequestId());
+        assertTrue(ex.getErrors().contains("user identifier is invalid"));
     }
 
     /**

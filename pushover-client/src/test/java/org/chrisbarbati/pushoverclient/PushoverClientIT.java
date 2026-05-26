@@ -6,6 +6,7 @@ import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import org.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
+import org.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -61,6 +62,75 @@ class PushoverClientIT {
         PushoverClient client = new PushoverClient(token, optional("pushover.encryptionKey"));
 
         assertEquals(1, client.getLimits().status());
+    }
+
+    /**
+     * Verifies the user/group validation endpoint using a configured user key.
+     *
+     * @throws Exception when the API call fails unexpectedly
+     * @since 0.6.0
+     */
+    @Test
+    void live_validateUserOrGroup_forConfiguredUserKey() throws Exception {
+        String token = required("pushover.appToken");
+        String user = required("pushover.userKey");
+        String device = optional("pushover.device");
+        PushoverClient client = new PushoverClient(token, optional("pushover.encryptionKey"));
+
+        UserGroupValidationResponse response = isBlank(device)
+                ? client.validateUserOrGroup(user)
+                : client.validateUserOrGroup(user, device);
+
+        assertEquals(1, response.status());
+        assertNotNull(response.request());
+        assertNotNull(response.devices());
+        assertFalse(response.devices().isEmpty());
+        assertNotNull(response.licenses());
+    }
+
+    /**
+     * Verifies group validation when an optional group key is configured.
+     *
+     * @throws Exception when the API call fails unexpectedly
+     * @since 0.6.0
+     */
+    @Test
+    void live_validateUserOrGroup_forConfiguredGroupKey_whenPresent() throws Exception {
+        String groupKey = optional("pushover.groupKey");
+        if (isBlank(groupKey)) {
+            LOGGER.warn("Skipping group validation integration test: missing pushover.groupKey");
+        }
+        Assumptions.assumeTrue(!isBlank(groupKey), "missing pushover.groupKey");
+
+        String token = required("pushover.appToken");
+        PushoverClient client = new PushoverClient(token, optional("pushover.encryptionKey"));
+
+        UserGroupValidationResponse response = client.validateUserOrGroup(groupKey);
+
+        assertEquals(1, response.status());
+        assertNotNull(response.request());
+    }
+
+    /**
+     * Verifies an intentionally invalid user/group key produces API failure from the validation endpoint.
+     *
+     * @since 0.6.0
+     */
+    @Test
+    void live_validateUserOrGroup_invalidKey_returnsApiError() {
+        String token = required("pushover.appToken");
+        String configuredInvalidUser = optional("pushover.invalidUserKey");
+        if (isBlank(configuredInvalidUser)) {
+            // 30 chars to pass client-side format validation but fail server-side lookup.
+            configuredInvalidUser = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        }
+        final String invalidUser = configuredInvalidUser;
+
+        PushoverClient client = new PushoverClient(token, optional("pushover.encryptionKey"));
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.validateUserOrGroup(invalidUser));
+
+        assertTrue(ex.getHttpStatus() >= 200 && ex.getHttpStatus() < 500);
+        assertFalse(ex.getErrors().isEmpty());
     }
 
     /**

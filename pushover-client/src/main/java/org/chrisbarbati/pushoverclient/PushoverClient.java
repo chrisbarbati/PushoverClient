@@ -17,6 +17,7 @@ import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import org.chrisbarbati.pushoverclient.model.SoundsResponse;
+import org.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,7 @@ import java.util.regex.Pattern;
 /**
  * Minimal Java client for core Pushover REST endpoints.
  *
- * @apiNote This client currently targets messages, receipts, sounds, and app limits endpoints.
+ * @apiNote This client currently targets messages, user/group validation, receipts, sounds, and app limits endpoints.
  * @implNote Validation follows documented Pushover API constraints before HTTP submission.
  * @since 0.1.0
  * @author Christian Barbati
@@ -60,11 +61,14 @@ public class PushoverClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PushoverClient.class);
 
-    // Pushover user/group keys are 30 alphanumeric chars; up to 50 can be sent comma-separated.
+    // Pushover user/group keys are 30 alphanumeric chars.
+    private static final Pattern IDENTIFIER = Pattern.compile("^[A-Za-z0-9]{30}$");
+    // Pushover user/group keys support up to 50 comma-separated identifiers for message sending.
     private static final Pattern IDENTIFIER_LIST = Pattern.compile("^[A-Za-z0-9]{30}(,[A-Za-z0-9]{30}){0,49}$");
     // Emergency receipt ids are 30 alphanumeric chars in API responses and follow-up endpoints.
     private static final Pattern RECEIPT_ID = Pattern.compile("^[A-Za-z0-9]{30}$");
     // Device names support [A-Za-z0-9_-] and max length 25 per documented API limits.
+    private static final Pattern DEVICE_NAME = Pattern.compile("^[A-Za-z0-9_-]{1,25}$");
     private static final Pattern DEVICE_LIST = Pattern.compile("^[A-Za-z0-9_-]{1,25}(,[A-Za-z0-9_-]{1,25})*$");
 
     private final String appToken;
@@ -289,6 +293,48 @@ public class PushoverClient {
      */
     public void acceptCallbackReceipt(ReceiptCallbackResponse callbackResponse) {
         handleCallbackReceipt(Objects.requireNonNull(callbackResponse, "callbackResponse is required"));
+    }
+
+    /**
+     * Validates a single user or group key via {@code /1/users/validate.json}.
+     *
+     * @param userOrGroup user key or group key to validate
+     * @return parsed validation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the identifier is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 0.6.0
+     */
+    public UserGroupValidationResponse validateUserOrGroup(String userOrGroup) throws IOException, InterruptedException {
+        return validateUserOrGroup(userOrGroup, null);
+    }
+
+    /**
+     * Validates a single user or group key, optionally constrained to a specific device, via {@code /1/users/validate.json}.
+     *
+     * @param userOrGroup user key or group key to validate
+     * @param device optional single device name to validate for the target account
+     * @return parsed validation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the identifier or device is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 0.6.0
+     */
+    public UserGroupValidationResponse validateUserOrGroup(String userOrGroup, String device) throws IOException, InterruptedException {
+        String normalizedIdentifier = requireUserOrGroup(userOrGroup);
+        String normalizedDevice = requireSingleDeviceName(device);
+        LOGGER.debug(
+                "Validating user/group target: endpoint={}, device={}",
+                PushoverEndpoints.VALIDATE_USER_OR_GROUP,
+                normalizedDevice
+        );
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("user", normalizedIdentifier);
+        putIfPresent(fields, "device", normalizedDevice);
+        return postForm(PushoverEndpoints.VALIDATE_USER_OR_GROUP, fields, UserGroupValidationResponse.class);
     }
 
     /**
@@ -582,13 +628,19 @@ public class PushoverClient {
                 Integer status = extractStatus(value);
                 String requestId = extractRequestId(value);
                 if (status != null && status != 1) {
+                    List<String> errors = extractErrors(response.body());
                     LOGGER.warn(
                             "API returned non-success status despite HTTP success: responseType={}, httpStatus={}, requestId={}",
                             responseType.getSimpleName(),
                             response.statusCode(),
                             requestId
                     );
-                    throw new PushoverApiException("Pushover API reported failure", response.statusCode(), requestId, List.of("status != 1"));
+                    throw new PushoverApiException(
+                            "Pushover API reported failure",
+                            response.statusCode(),
+                            requestId,
+                            errors.isEmpty() ? List.of("status != 1") : errors
+                    );
                 }
 
                 if (LOGGER.isDebugEnabled()) {
@@ -629,6 +681,9 @@ public class PushoverClient {
         if (value instanceof MessageResponse messageResponse) {
             return messageResponse.status();
         }
+        if (value instanceof UserGroupValidationResponse userGroupValidationResponse) {
+            return userGroupValidationResponse.status();
+        }
         if (value instanceof SoundsResponse soundsResponse) {
             return soundsResponse.status();
         }
@@ -655,6 +710,9 @@ public class PushoverClient {
         if (value instanceof MessageResponse messageResponse) {
             return messageResponse.request();
         }
+        if (value instanceof UserGroupValidationResponse userGroupValidationResponse) {
+            return userGroupValidationResponse.request();
+        }
         if (value instanceof SoundsResponse soundsResponse) {
             return soundsResponse.request();
         }
@@ -668,6 +726,18 @@ public class PushoverClient {
             return receiptCancellationResponse.request();
         }
         return null;
+    }
+
+    private List<String> extractErrors(String responseBody) {
+        try {
+            ApiErrorResponse errorResponse = objectMapper.readValue(responseBody, ApiErrorResponse.class);
+            if (errorResponse.errors() == null) {
+                return List.of();
+            }
+            return errorResponse.errors();
+        } catch (IOException ignored) {
+            return List.of();
+        }
     }
 
     private MessageRequest requireEmergencyRequest(MessageRequest request, String methodName) {
@@ -1055,6 +1125,41 @@ public class PushoverClient {
         String normalized = requireNonBlank(receiptId, "receiptId is required").trim();
         if (!RECEIPT_ID.matcher(normalized).matches()) {
             throw new PushoverClientException("receiptId must be a 30-character alphanumeric identifier");
+        }
+        return normalized;
+    }
+
+    /**
+     * Validates and normalizes a user/group identifier used by the validation endpoint.
+     *
+     * @param userOrGroup candidate user or group key
+     * @return normalized user/group key
+     * @throws PushoverClientException when the identifier is blank or malformed
+     * @since 0.6.0
+     */
+    private static String requireUserOrGroup(String userOrGroup) {
+        String normalized = requireNonBlank(userOrGroup, "userOrGroup is required").trim();
+        if (!IDENTIFIER.matcher(normalized).matches()) {
+            throw new PushoverClientException("userOrGroup must be a 30-character alphanumeric identifier");
+        }
+        return normalized;
+    }
+
+    /**
+     * Validates and normalizes an optional single device name used by the validation endpoint.
+     *
+     * @param device candidate device name, or null to omit device-specific validation
+     * @return normalized device name, or null when not supplied
+     * @throws PushoverClientException when the device is blank or malformed
+     * @since 0.6.0
+     */
+    private static String requireSingleDeviceName(String device) {
+        if (device == null) {
+            return null;
+        }
+        String normalized = device.trim();
+        if (normalized.isEmpty() || !DEVICE_NAME.matcher(normalized).matches()) {
+            throw new PushoverClientException("device must be a single valid device name");
         }
         return normalized;
     }
