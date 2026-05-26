@@ -14,6 +14,7 @@ Java client for the Pushover REST API.
 - Send messages via `/1/messages.json`, including optional fields and parameters
 - Support attachments as multipart binary (`attachment`) and Base64 (`attachment_base64`)
 - Support end-to-end encryption for `message`, `title`, `url`, and `url_title`
+- Validate user and group keys via `/1/users/validate.json`, with optional device-specific validation
 - Query emergency receipts via `/1/receipts/{receipt}.json`
 - Cancel emergency receipts directly or by tag
 - Retrieve available sounds via `/1/sounds.json`
@@ -73,6 +74,7 @@ Run integration tests (optional):
 3. For optional field coverage tests, optionally set:
    - `pushover.device`
    - `pushover.sound`
+   - `pushover.groupKey` (optional, enables live group validation coverage)
 4. For the combined emergency receipt lifecycle live test (opt-in), set:
    - `pushover.enableEmergencyTests=true`
    - `pushover.callbackUrl` (optional; use a real publicly reachable URL to include callback submission in the lifecycle flow)
@@ -95,6 +97,7 @@ Integration tests log a warning and skip when credentials are missing, so builds
 
 Current integration coverage includes:
 
+- `validateUserOrGroup` for configured user keys, plus optional configured group keys
 - `getSounds` and `getLimits`
 - standard message send
 - encrypted message send
@@ -129,6 +132,33 @@ public final class SendMessageExample {
                 .build();
 
         return client.sendMessage(request);
+    }
+}
+```
+
+User/group validation before storing or sending to a target key:
+
+```java
+import java.io.IOException;
+
+import org.chrisbarbati.pushoverclient.PushoverClient;
+import org.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
+
+public final class ValidateUserExample {
+    private ValidateUserExample() {
+    }
+
+    public static UserGroupValidationResponse validate(
+            String appToken,
+            String userOrGroupKey,
+            String optionalDevice
+    ) throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken);
+
+        if (optionalDevice == null || optionalDevice.isBlank()) {
+            return client.validateUserOrGroup(userOrGroupKey);
+        }
+        return client.validateUserOrGroup(userOrGroupKey, optionalDevice);
     }
 }
 ```
