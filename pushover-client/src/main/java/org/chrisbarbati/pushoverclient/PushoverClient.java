@@ -326,9 +326,8 @@ public class PushoverClient {
         String normalizedIdentifier = requireUserOrGroup(userOrGroup);
         String normalizedDevice = requireSingleDeviceName(device);
         LOGGER.debug(
-                "Validating user/group target: endpoint={}, userOrGroup={}, device={}",
+                "Validating user/group target: endpoint={}, device={}",
                 PushoverEndpoints.VALIDATE_USER_OR_GROUP,
-                normalizedIdentifier,
                 normalizedDevice
         );
 
