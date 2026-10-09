@@ -41,6 +41,7 @@ build/
 
 ### Properties ###
 *.properties
+!.mvn/wrapper/maven-wrapper.properties
 
 ### Github ###
 .github/*
