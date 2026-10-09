@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="$(mvn -q -N help:evaluate -Dexpression=project.version -DforceStdout | grep -E '^[0-9A-Za-z._-]+$' | tail -n 1)"
+          version="$(./mvnw -q -N help:evaluate -Dexpression=project.version -DforceStdout | grep -E '^[0-9A-Za-z._-]+$' | tail -n 1)"
           if [[ -z "${version}" ]]; then
             echo "Could not resolve project version" >&2
             exit 1
@@ -41,7 +41,7 @@ jobs:
           echo "Resolved project version: ${version}"
 
       - name: Verify build
-        run: mvn -B verify
+        run: ./mvnw -B verify
 
       - name: Stage release assets
         shell: bash

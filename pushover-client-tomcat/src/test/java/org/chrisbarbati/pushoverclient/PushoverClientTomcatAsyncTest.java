@@ -283,12 +283,15 @@ class PushoverClientTomcatAsyncTest {
     }
 
     private static void awaitPendingFutureCount(PushoverClient client, String fieldName, int expectedCount) throws Exception {
-        Field field = PushoverClient.class.getDeclaredField(fieldName);
+        Field clientLifecycle = PushoverClient.class.getDeclaredField("receiptLifecycle");
+        clientLifecycle.setAccessible(true);
+        Object lifecycle = clientLifecycle.get(client);
+        Field field = lifecycle.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
 
         long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
         while (System.nanoTime() < deadline) {
-            Object value = field.get(client);
+            Object value = field.get(lifecycle);
             if (value instanceof Map<?, ?> map && map.size() == expectedCount) {
                 return;
             }

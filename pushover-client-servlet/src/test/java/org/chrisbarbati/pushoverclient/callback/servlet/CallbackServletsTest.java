@@ -247,12 +247,15 @@ class CallbackServletsTest {
     }
 
     private static void awaitPendingFutureCount(PushoverClient client, int expectedCount) throws Exception {
-        Field field = PushoverClient.class.getDeclaredField("pendingCallbackFutures");
+        Field clientLifecycle = PushoverClient.class.getDeclaredField("receiptLifecycle");
+        clientLifecycle.setAccessible(true);
+        Object lifecycle = clientLifecycle.get(client);
+        Field field = lifecycle.getClass().getDeclaredField("pendingCallbackFutures");
         field.setAccessible(true);
 
         long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
         while (System.nanoTime() < deadline) {
-            Object value = field.get(client);
+            Object value = field.get(lifecycle);
             if (value instanceof Map<?, ?> map && map.size() == expectedCount) {
                 return;
             }
