@@ -1,0 +1,53 @@
+# Integration test configuration template.
+#
+# To enable the optional live integration tests, copy this file to
+# `pushover-integration.properties` (same directory) and fill in real values.
+# The real file is gitignored so credentials never enter the repository.
+#
+# All values may instead be provided as system properties (`-Dpushover.xxx=...`)
+# or environment variables.
+
+# --- Required for integration tests ---
+# A 30-character alphanumeric Pushover application token.
+pushover.appToken=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+# A 30-character alphanumeric Pushover user key.
+pushover.userKey=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+# --- Optional; enables additional integration coverage ---
+# 64-character hex key enabling the encrypted-message integration test.
+#pushover.encryptionKey=
+# Restricts an optional-field message test to a single device.
+#pushover.device=
+# Sound to use for the optional-field message test.
+#pushover.sound=pushing
+# Enables live group validation coverage when a real group key is provided.
+#pushover.groupKey=
+
+# Multipart attachment integration test (path must exist locally).
+#pushover.multipartAttachment.path=src/test/resources/attachments/test_pattern.jpg
+#pushover.multipartAttachment.contentType=image/jpeg
+# Base64 attachment integration test (path must exist locally).
+#pushover.base64Attachment.path=src/test/resources/attachments/test_pattern.jpg
+#pushover.base64Attachment.contentType=image/jpeg
+
+# Intentional live failure coverage.
+#pushover.invalidUserKey=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+#pushover.invalidAppToken=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+# --- Emergency receipt lifecycle (opt-in) ---
+# Set true to run the combined emergency receipt lifecycle test.
+#pushover.enableEmergencyTests=true
+# Public, reachable callback endpoint for the lifecycle test.
+#pushover.callbackUrl=https://example.com/pushover/callback
+# Single base tag used by the lifecycle test.
+#pushover.tags=pushoverclient-it
+# Fail the build when the API rejects callbacks/tags instead of skipping.
+#pushover.strictEmergencyTest=false
+
+# --- Async polling/callback acknowledgement (opt-in) ---
+# Set true to run async emergency acknowledgement tests across core/servlet/Jetty/Tomcat.
+#pushover.enableAsyncEmergencyTests=true
+# Local bind URI for the embedded callback test server.
+#pushover.asyncCallbackBindUri=http://127.0.0.1:8180/pushover/callback
+# Public callback URL that forwards to the bind URI above.
+#pushover.asyncCallbackUrl=https://example.com/pushover/callback

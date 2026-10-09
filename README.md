@@ -1,6 +1,30 @@
 # PushoverClient
 
-Java client for the Pushover REST API.
+A minimal, low-dependency Java client for the Pushover REST API.
+
+## Overview
+
+PushoverClient sends Pushover notifications from scripts, cron jobs, CI pipelines,
+and monitoring/alerting tools without dragging in a heavyweight HTTP client or
+framework. The core jar depends only on `jackson-databind` and `slf4j-api`, uses the
+JDK's `java.net.http.HttpClient`, and exposes immutable request/response models behind
+a single `PushoverClient` facade.
+
+Beyond basic messages it covers the higher-value Pushover workflows:
+
+- **Emergency alerts with receipts** — send a priority-2 message, then poll for
+  acknowledgement or receive a callback when an operator acknowledges it.
+- **Key/group validation** before storing or sending to a target user.
+- **Attachments** (multipart and Base64) and **end-to-end encrypted** messages.
+
+### Design goals
+
+- **Low footprint** - two runtime dependencies in the core module.
+- **Modern Java 17** - `java.net.http`, records, and fluent builders, no framework.
+- **One facade** - all operations live on the single `PushoverClient` class.
+- **Fail fast** - documented Pushover constraints are validated before any HTTP call.
+- **Optional web-container modules** - servlet/Jetty/Tomcat callback support ships in
+  separate artifacts so the core stays lightweight.
 
 ## Modules
 
@@ -44,28 +68,27 @@ If you only add or improve tests, prefer keeping `revision` unchanged unless you
 
 ## Quick run
 
-Set credentials, then run the small harness in `Main`.
+Set your credentials, then use the inline `SendMessageExample` shown in [Programmatic usage](#programmatic-usage) below to send a first notification:
 
 ```bash
 export PUSHOVER_APP_TOKEN="your_app_token"
 export PUSHOVER_USER_KEY="your_user_key"
 export PUSHOVER_ENCRYPTION_KEY="64_char_hex_key_optional"
-mvn -q -pl pushover-client -DskipTests exec:java -Dexec.mainClass=org.chrisbarbati.Main -Dexec.args="Hello from CLI"
 ```
 
-If `PUSHOVER_APP_TOKEN` or `PUSHOVER_USER_KEY` is missing, the example exits without error.
+The example wires `send(...)` with these values and sends a normal-priority notification.
 
 ## Tests
 
 Run unit tests:
 
 ```bash
-mvn -q test
+./mvnw -q test
 ```
 
 Run integration tests (optional):
 
-1. Fill `pushover-client/src/test/resources/pushover-integration.properties`, or set system properties/env vars.
+1. Copy `pushover-client/src/test/resources/pushover-integration.properties.example` to `pushover-integration.properties` in the same directory and fill in real values, or set system properties/env vars instead. The real properties file is gitignored, so credentials never enter the repository.
 2. For attachment integration tests, provide one or two real image files and set:
    - `pushover.multipartAttachment.path`
    - `pushover.multipartAttachment.contentType`
@@ -90,7 +113,7 @@ Run integration tests (optional):
 7. Run:
 
 ```bash
-mvn -q verify
+./mvnw -q verify
 ```
 
 Integration tests log a warning and skip when credentials are missing, so builds do not fail for missing secrets.
@@ -510,4 +533,19 @@ Notes:
 - Both async APIs also provide `Duration` overloads for per-call expiration overrides.
 - `sendEmergencyMessageAndAwaitCallback(...)` uses the request callback when present. If it conflicts with the configured default callback URL, the request value wins and a WARN log is emitted unless `warnOnConflictingCallback(false)` is configured.
 - `JettyCallbackServer` requires a caller-supplied `ExecutorService` backed by `ThreadPoolExecutor`, so the library does not hide its callback-server thread usage.
+
+### Async resource usage
+
+- The polling flow (`sendEmergencyMessageAndAwaitAcknowledgement`) intentionally occupies **one executor thread per pending receipt** while it blocks in a sleep-poll loop until the receipt is acknowledged, expires, or the future expires (default 10 minutes).
+- The callback flow (`sendEmergencyMessageAndAwaitCallback`) is event-driven for the callback itself, but each pending future also runs a lightweight monitor thread that wakes periodically until the callback arrives or the future expires (default 10 minutes).
+- Synchronous methods (`sendMessage`, `getReceipt`, `cancelReceipt`, and friends) only block the calling thread for the duration of the HTTP call itself.
+- Size your caller-supplied `ExecutorService` to comfortably cover the number of concurrent pending receipts, since each one holds a thread for up to the future expiration. A cached thread pool (as in the async examples above) is the simplest fit.
+- **Virtual threads (Java 21+)**: the polling and host-managed callback flows accept any `ExecutorService`, so on Java 21+ you can pass `Executors.newVirtualThreadPerTaskExecutor()`; the blocking sleep-poll loops park a carrier thread instead of occupying a platform thread, which is exactly the workload virtual threads make cheap. The library itself remains compiled for Java 17. Two exceptions: `JettyCallbackServer` requires an `ExecutorService` backed by `ThreadPoolExecutor`, so virtual-thread executors cannot back the Jetty self-managed callback server; and for `TomcatCallbackServer`, prefer a platform-thread pool since handing a virtual-thread executor to a web container is atypical.
+
+### Security notes
+
+- All requests default to HTTPS (`https://api.pushover.net`) via the base URL.
+- POST endpoints send the app token in the request body as a form field, per the Pushover API.
+- For the GET endpoints (`getSounds`, `getLimits`, `getReceipt`), the Pushover API takes the token as a `token=` query parameter. Query strings can appear in server access logs, proxy/gateway logs, and browser or HTTP-client history, so keep the base URL on HTTPS and be cautious when routing traffic through shared network appliances.
+- The app token (and the optional end-to-end encryption key) are held in memory as `String` fields for the lifetime of the `PushoverClient` instance; supply them from environment variables or a secrets store rather than hard-coding.
 

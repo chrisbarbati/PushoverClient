@@ -14,6 +14,10 @@
     <artifactId>pushover-client-jetty</artifactId>
     <name>Pushover Client Jetty Callback Support</name>
 
+    <properties>
+        <Automatic-Module-Name>org.chrisbarbati.pushoverclient.jetty</Automatic-Module-Name>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.chrisbarbati</groupId>

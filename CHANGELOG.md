@@ -2,6 +2,23 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.7.0] - 2026-10-09
+
+### Changed
+- Refactored `PushoverClient` internals into package-private collaborators (`HttpTransport`, `RequestValidator`, `MessageFieldsBuilder`, `ReceiptLifecycle`) so the single public facade is unchanged while implementation details stay out of the public API surface
+- `parseResponse` now preserves the HTTP status when a non-JSON error response body is received (for example a proxy-generated HTML error page), raising `PushoverApiException` with the status instead of a generic parse failure
+- Added `Automatic-Module-Name` to every module so the jars have stable Java Platform Module System names without requiring `module-info.java`
+- Added the Maven Wrapper (pinned Maven 3.9.11); build commands in the README and CI now use `./mvnw`
+- Switched to `maven.compiler.release=17` for reproducible compilation
+
+### Removed
+- The command-line `Main` demo class that previously shipped inside the `pushover-client` jar; the quick-run flow is now covered by the README `SendMessageExample` snippet
+
+### Documented
+- Security note describing how the app token is transmitted (form field for POST, `token=` query parameter for GET endpoints) and the corresponding logging/proxy considerations
+- Async resource-usage note describing that polling receipts intentionally block one executor thread per pending receipt, and how to size the caller-supplied `ExecutorService` accordingly
+- Added `pushover-integration.properties.example` as a tracked template for the gitignored integration test configuration
+
 ## [0.6.0] - 2026-05-23
 ### Added
 - User/group validation support via `POST /1/users/validate.json`

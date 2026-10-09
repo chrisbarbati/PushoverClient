@@ -368,6 +368,22 @@ class PushoverClientHttpTest {
     }
 
     /**
+     * Verifies a non-JSON error body preserves the HTTP status in {@link PushoverApiException}.
+     *
+     * @since 0.7.0
+     */
+    @Test
+    void getSounds_throwsApiExceptionPreservingHttpStatusOnNonJsonErrorBody() {
+        server.enqueue(new MockResponse().setResponseCode(502)
+                .setBody("<!DOCTYPE html><html><body>Bad Gateway</body></html>"));
+
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.getSounds());
+
+        assertEquals(502, ex.getHttpStatus());
+        assertTrue(ex.getErrors().isEmpty());
+    }
+
+    /**
      * Verifies sounds endpoint failures map to {@link PushoverApiException}.
      *
      * @since 0.1.0

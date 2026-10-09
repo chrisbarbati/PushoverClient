@@ -14,6 +14,10 @@
     <artifactId>pushover-client-servlet</artifactId>
     <name>Pushover Client Servlet Callback Support</name>
 
+    <properties>
+        <Automatic-Module-Name>org.chrisbarbati.pushoverclient.servlet</Automatic-Module-Name>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.chrisbarbati</groupId>
@@ -35,7 +39,7 @@
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
-            <version>11.0.24</version>
+            <version>12.1.10</version>
             <scope>test</scope>
         </dependency>
         <dependency>
