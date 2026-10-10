@@ -1,6 +1,9 @@
 # PushoverClient
 
-A minimal, low-dependency Java client for the Pushover REST API.
+[![CI](https://github.com/chrisbarbati/PushoverClient/actions/workflows/ci.yml/badge.svg)](https://github.com/chrisbarbati/PushoverClient/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+A low-dependency, full-featured Java client for the Pushover REST API, with first-class async acknowledgement support.
 
 ## Overview
 
@@ -10,15 +13,20 @@ framework. The core jar depends only on `jackson-databind` and `slf4j-api`, uses
 JDK's `java.net.http.HttpClient`, and exposes immutable request/response models behind
 a single `PushoverClient` facade.
 
-Beyond basic messages it covers the higher-value Pushover workflows:
+The client is designed to cover the full documented Pushover API, not just the send path:
 
-- **Emergency alerts with receipts** — send a priority-2 message, then poll for
-  acknowledgement or receive a callback when an operator acknowledges it.
-- **Key/group validation** before storing or sending to a target user.
-- **Attachments** (multipart and Base64) and **end-to-end encrypted** messages.
+- **Messages** - every documented field, including title, url/url_title, devices, sounds, timestamps, HTML/monospace rendering, priority, ttl, and emergency `retry`/`expire`/`callback`/`tags`.
+- **Attachments** - both encodings: multipart binary (`attachment`) and Base64 (`attachment_base64`).
+- **End-to-end encryption** - per Pushover's scheme (gzip + AES-256-CBC + HMAC) for `message`, `title`, `url`, and `url_title`.
+- **Emergency receipts** - query receipt status via `/1/receipts/{receipt}.json`, and cancel by receipt or by tag.
+- **Async acknowledgement** - send an emergency message and complete a future when it is acknowledged, by polling the receipt or fielding a callback from an optional embedded (`JettyCallbackServer`/`TomcatCallbackServer`) or host-managed (servlet / `JettyCallbackHandlers`) callback server.
+- **Accounts** - available sounds (`/1/sounds.json`), usage limits (`/1/apps/limits.json`), and user/group key validation (`/1/users/validate.json`).
+
+See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
 ### Design goals
 
+- **Full-featured** - intended to cover the entire documented Pushover API surface.
 - **Low footprint** - two runtime dependencies in the core module.
 - **Modern Java 17** - `java.net.http`, records, and fluent builders, no framework.
 - **One facade** - all operations live on the single `PushoverClient` class.
@@ -33,40 +41,17 @@ Beyond basic messages it covers the higher-value Pushover workflows:
 - `pushover-client-jetty` - optional Jetty-native callback `Handler` support plus the Jetty-backed `CallbackServer` implementation for self-managed lifecycle
 - `pushover-client-tomcat` - optional Tomcat-backed `CallbackServer` implementation for self-managed callback lifecycle
 
-## Current scope
-
-- Send messages via `/1/messages.json`, including optional fields and parameters
-- Support attachments as multipart binary (`attachment`) and Base64 (`attachment_base64`)
-- Support end-to-end encryption for `message`, `title`, `url`, and `url_title`
-- Validate user and group keys via `/1/users/validate.json`, with optional device-specific validation
-- Query emergency receipts via `/1/receipts/{receipt}.json`
-- Cancel emergency receipts directly or by tag
-- Retrieve available sounds via `/1/sounds.json`
-- Retrieve usage limits via `/1/apps/limits.json`
-
-See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
-
-## Releases
-
-- Shared artifact versioning uses the root Maven `revision` property in [`pom.xml`](pom.xml). That value becomes the version for every module in the reactor.
-- Version numbers follow a semantic `major.minor.patch` scheme:
-  - `major`: incompatible public API changes or breaking behavior changes, or other major release milestones
-  - `minor`: backward-compatible features, endpoint coverage additions, or meaningful new capabilities
-  - `patch`: backward-compatible fixes, polish, or small behavioral corrections that are worth publishing
-- Bump `revision` when you intend to publish a new stable artifact version, typically for user-facing API changes, behavior changes, dependency/runtime changes worth releasing, or other intentional release cuts.
-- Do **not** bump `revision` for test-only changes, local-only workflow notes, or other repository maintenance that does not change the published artifacts' intended semantic version.
-- Successful pushes to `main` publish a stable GitHub release tagged as `v<revision>`, using the root Maven `revision` from [`pom.xml`](pom.xml).
-- If `main` is rebuilt without changing `revision`, the existing versioned release is refreshed in place and its assets are overwritten.
-- Successful pushes to `main` also update a separate moving prerelease feed tagged `rolling-main-prerelease` with the latest tested reactor JARs.
-
-In practice, this gives the repository two release tracks:
-
-- Stable, version-labeled releases: `v<revision>`
-- Moving prerelease feed: `rolling-main-prerelease`
-
-If you only add or improve tests, prefer keeping `revision` unchanged unless you are intentionally cutting a new stable release for some other reason.
-
 ## Quick run
+
+Add the core dependency to your build:
+
+```xml
+<dependency>
+    <groupId>dev.chrisbarbati</groupId>
+    <artifactId>pushover-client</artifactId>
+    <version>0.8.0</version>
+</dependency>
+```
 
 Set your credentials, then use the inline `SendMessageExample` shown in [Programmatic usage](#programmatic-usage) below to send a first notification:
 
@@ -86,49 +71,14 @@ Run unit tests:
 ./mvnw -q test
 ```
 
-Run integration tests (optional):
-
-1. Copy `pushover-client/src/test/resources/pushover-integration.properties.example` to `pushover-integration.properties` in the same directory and fill in real values, or set system properties/env vars instead. The real properties file is gitignored, so credentials never enter the repository.
-2. For attachment integration tests, provide one or two real image files and set:
-   - `pushover.multipartAttachment.path`
-   - `pushover.multipartAttachment.contentType`
-   - `pushover.base64Attachment.path`
-   - `pushover.base64Attachment.contentType`
-3. For optional field coverage tests, optionally set:
-   - `pushover.device`
-   - `pushover.sound`
-   - `pushover.groupKey` (optional, enables live group validation coverage)
-4. For the combined emergency receipt lifecycle live test (opt-in), set:
-   - `pushover.enableEmergencyTests=true`
-   - `pushover.callbackUrl` (optional; use a real publicly reachable URL to include callback submission in the lifecycle flow)
-   - `pushover.tags` (optional single base tag; defaults to `pushoverclient-it`)
-   - `pushover.strictEmergencyTest=true` to fail build when API rejects callback/tags (default behavior is skip)
-5. For async callback acknowledgement integration tests in `pushover-client-servlet`, `pushover-client-jetty`, and `pushover-client-tomcat` (opt-in), set:
-   - `pushover.enableAsyncEmergencyTests=true`
-   - `pushover.asyncCallbackBindUri` (local bind URI for the embedded test server)
-   - `pushover.asyncCallbackUrl` (public callback URL that forwards to the bind URI above)
-6. For intentional live failure testing, optionally set:
-   - `pushover.invalidUserKey` (30 alphanumeric chars)
-   - `pushover.invalidAppToken`
-7. Run:
+Optional live integration tests exercise the real Pushover API. They require credentials in
+`pushover-client/src/test/resources/pushover-integration.properties` (copy the
+[`pushover-integration.properties.example`](pushover-client/src/test/resources/pushover-integration.properties.example)
+template) or as system properties, and skip with a warning when credentials are missing:
 
 ```bash
 ./mvnw -q verify
 ```
-
-Integration tests log a warning and skip when credentials are missing, so builds do not fail for missing secrets.
-
-Current integration coverage includes:
-
-- `validateUserOrGroup` for configured user keys, plus optional configured group keys
-- `getSounds` and `getLimits`
-- standard message send
-- encrypted message send
-- device/sound/timestamp optional fields
-- multipart attachment send
-- base64 attachment send
-- emergency receipt lookup and cancellation lifecycle (opt-in)
-- async servlet, Jetty, and Tomcat callback acknowledgement flows (opt-in)
 - intentional live failures (invalid user and invalid token)
 
 ## Programmatic usage
@@ -542,9 +492,9 @@ Notes:
 
 - The polling flow (`sendEmergencyMessageAndAwaitAcknowledgement`) intentionally occupies **one executor thread per pending receipt** while it blocks in a sleep-poll loop until the receipt is acknowledged, expires, or the future expires (default 10 minutes).
 - The callback flow (`sendEmergencyMessageAndAwaitCallback`) is event-driven for the callback itself, but each pending future also runs a lightweight monitor thread that wakes periodically until the callback arrives or the future expires (default 10 minutes).
-- Synchronous methods (`sendMessage`, `getReceipt`, `cancelReceipt`, and friends) only block the calling thread for the duration of the HTTP call itself.
+- Synchronous methods (`sendMessage`, `getReceipt`, `cancelReceipt`, and similar) only block the calling thread for the duration of the HTTP call itself.
 - Size your caller-supplied `ExecutorService` to comfortably cover the number of concurrent pending receipts, since each one holds a thread for up to the future expiration. A cached thread pool (as in the async examples above) is the simplest fit.
-- **Virtual threads (Java 21+)**: the polling and host-managed callback flows accept any `ExecutorService`, so on Java 21+ you can pass `Executors.newVirtualThreadPerTaskExecutor()`; the blocking sleep-poll loops park a carrier thread instead of occupying a platform thread, which is exactly the workload virtual threads make cheap. The library itself remains compiled for Java 17. Two exceptions: `JettyCallbackServer` requires an `ExecutorService` backed by `ThreadPoolExecutor`, so virtual-thread executors cannot back the Jetty self-managed callback server; and for `TomcatCallbackServer`, prefer a platform-thread pool since handing a virtual-thread executor to a web container is atypical.
+- **Virtual threads (Java 21+)**: the polling and host-managed callback flows accept any `ExecutorService`, so on Java 21+ you can pass `Executors.newVirtualThreadPerTaskExecutor()`; the blocking sleep-poll loops park a carrier thread instead of occupying a platform thread. The library itself remains compiled for Java 17. Two exceptions: `JettyCallbackServer` requires an `ExecutorService` backed by `ThreadPoolExecutor`, so virtual-thread executors cannot back the Jetty self-managed callback server; and for `TomcatCallbackServer`, prefer a platform-thread pool since handing a virtual-thread executor to a web container is atypical.
 
 ### Security notes
 
@@ -552,4 +502,8 @@ Notes:
 - POST endpoints send the app token in the request body as a form field, per the Pushover API.
 - For the GET endpoints (`getSounds`, `getLimits`, `getReceipt`), the Pushover API takes the token as a `token=` query parameter. Query strings can appear in server access logs, proxy/gateway logs, and browser or HTTP-client history, so keep the base URL on HTTPS and be cautious when routing traffic through shared network appliances.
 - The app token (and the optional end-to-end encryption key) are held in memory as `String` fields for the lifetime of the `PushoverClient` instance; supply them from environment variables or a secrets store rather than hard-coding.
+
+## License
+
+[MIT](LICENSE) © [Christian Barbati](https://github.com/chrisbarbati)
 

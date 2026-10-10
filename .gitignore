@@ -47,3 +47,6 @@ build/
 .github/*
 !.github/workflows/
 !.github/workflows/**
+
+### Maintainer ###
+/MAINTAINING.md
