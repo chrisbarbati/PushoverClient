@@ -350,8 +350,8 @@ public final class ServletManagedCallbackExample {
 Jetty host-managed callback lifecycle for an existing Jetty server:
 
 ```java
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.HandlerCollection;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -373,7 +373,8 @@ public final class ExistingJettyCallbackExample {
     public static CompletableFuture<ReceiptCallbackResponse> sendAndAwaitCallback(
             String appToken,
             String userKey,
-            HandlerCollection existingHandlers
+            Server server,
+            Handler existingHandler
     ) {
         AsyncReceiptProperties asyncProperties = AsyncReceiptProperties.builder()
                 .defaultCallbackUrl("https://example.com/pushover/callback")
@@ -389,7 +390,10 @@ public final class ExistingJettyCallbackExample {
                 null
         );
 
-        existingHandlers.addHandler(JettyCallbackHandlers.create("/pushover/callback", client));
+        Handler callbackHandler = JettyCallbackHandlers.create("/pushover/callback", client);
+
+        // Mount the callback handler alongside your existing handlers in a Jetty 12 Handler.Sequence.
+        server.setHandler(new Handler.Sequence(callbackHandler, existingHandler));
 
         ExecutorService executorService = Executors.newCachedThreadPool();
         MessageRequest request = MessageRequest.builder(userKey, "Database unavailable")

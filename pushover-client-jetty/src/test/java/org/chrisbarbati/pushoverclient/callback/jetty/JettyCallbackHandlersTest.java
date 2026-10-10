@@ -1,7 +1,5 @@
 package org.chrisbarbati.pushoverclient.callback.jetty;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -10,11 +8,14 @@ import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
 import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.util.Callback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -68,20 +70,10 @@ class JettyCallbackHandlersTest {
         ServerConnector connector = new ServerConnector(server);
         server.addConnector(connector);
 
-        HandlerCollection handlers = new HandlerCollection();
-        handlers.addHandler(JettyCallbackHandlers.create("/pushover/callback", delivered::set));
-        handlers.addHandler(new AbstractHandler() {
-            @Override
-            public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
-                if (!"/health".equals(target)) {
-                    return;
-                }
-                baseRequest.setHandled(true);
-                response.setStatus(HttpServletResponse.SC_OK);
-                response.setContentType("text/plain;charset=UTF-8");
-                response.getWriter().write("healthy");
-            }
-        });
+        Handler handlers = new Handler.Sequence(
+                JettyCallbackHandlers.create("/pushover/callback", delivered::set),
+                healthHandler()
+        );
         server.setHandler(handlers);
         server.start();
 
@@ -170,6 +162,21 @@ class JettyCallbackHandlersTest {
             executorService.shutdownNow();
             callbackHost.stop();
         }
+    }
+
+    private static Handler healthHandler() {
+        return new AbstractHandler() {
+            @Override
+            public boolean handle(Request request, Response response, Callback callback) {
+                if (!"/health".equals(request.getHttpURI().getPath())) {
+                    return false;
+                }
+                response.setStatus(HttpStatus.OK_200);
+                response.getHeaders().put("Content-Type", "text/plain;charset=UTF-8");
+                response.write(true, ByteBuffer.wrap("healthy".getBytes(StandardCharsets.UTF_8)), callback);
+                return true;
+            }
+        };
     }
 
     private static MessageRequest emergencyRequest() {

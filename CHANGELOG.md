@@ -2,6 +2,13 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.7.1] - 2026-10-09
+
+### Changed
+- Upgraded `pushover-client-jetty` to Jetty `12.1.10` and migrated `JettyCallbackHandlers` to the Jetty 12 core `Handler` API (`boolean handle(Request, Response, Callback)`)
+- Replaced the removed Jetty `HandlerCollection` with `Handler.Sequence` in the host-managed callback example and its unit tests
+- `JettyCallbackServer` remains compatible unchanged; the `pushover-client-servlet` module keeps its test-scoped Jetty 11 dependency since its public API is servlet-only
+
 ## [0.7.0] - 2026-10-09
 
 ### Changed

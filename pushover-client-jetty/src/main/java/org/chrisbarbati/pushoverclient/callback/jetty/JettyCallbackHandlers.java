@@ -1,17 +1,19 @@
 package org.chrisbarbati.pushoverclient.callback.jetty;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.chrisbarbati.pushoverclient.PushoverClient;
 import org.chrisbarbati.pushoverclient.callback.CallbackPayloadParser;
 import org.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.io.Content;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.util.Callback;
 
-import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -23,6 +25,8 @@ import java.util.function.Consumer;
  * @author Christian Barbati
  */
 public final class JettyCallbackHandlers {
+    private static final String PLAIN_TEXT = "text/plain;charset=UTF-8";
+
     private JettyCallbackHandlers() {
     }
 
@@ -94,32 +98,37 @@ public final class JettyCallbackHandlers {
         }
 
         @Override
-        public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
-            if (!callbackPath.equals(target)) {
-                return;
-            }
-            baseRequest.setHandled(true);
-
-            if (!"POST".equalsIgnoreCase(request.getMethod())) {
-                response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-                response.setContentType("text/plain;charset=UTF-8");
-                response.getWriter().write("Method Not Allowed");
-                return;
+        public boolean handle(Request request, Response response, Callback callback) {
+            if (!callbackPath.equals(request.getHttpURI().getPath())) {
+                return false;
             }
 
             try {
+                if (!"POST".equalsIgnoreCase(request.getMethod())) {
+                    write(response, callback, HttpStatus.METHOD_NOT_ALLOWED_405, "Method Not Allowed");
+                    return true;
+                }
+
+                ByteBuffer body = Content.Source.asByteBuffer(request);
                 ReceiptCallbackResponse callbackResponse = CallbackPayloadParser.parseFormEncodedBody(
-                        new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
+                        StandardCharsets.UTF_8.decode(body).toString()
                 );
                 callbackHandler.accept(callbackResponse);
-                response.setStatus(HttpServletResponse.SC_OK);
-                response.setContentType("text/plain;charset=UTF-8");
-                response.getWriter().write("OK");
+                write(response, callback, HttpStatus.OK_200, "OK");
+                return true;
             } catch (PushoverClientException ex) {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.setContentType("text/plain;charset=UTF-8");
-                response.getWriter().write(ex.getMessage());
+                write(response, callback, HttpStatus.BAD_REQUEST_400, ex.getMessage());
+                return true;
+            } catch (Exception ex) {
+                callback.failed(ex);
+                return true;
             }
+        }
+
+        private static void write(Response response, Callback callback, int status, String body) {
+            response.setStatus(status);
+            response.getHeaders().put("Content-Type", PLAIN_TEXT);
+            response.write(true, ByteBuffer.wrap(body.getBytes(StandardCharsets.UTF_8)), callback);
         }
     }
 }
