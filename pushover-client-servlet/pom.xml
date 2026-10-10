@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.chrisbarbati</groupId>
+        <groupId>dev.chrisbarbati</groupId>
         <artifactId>pushover-client-parent</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
@@ -15,12 +15,12 @@
     <name>Pushover Client Servlet Callback Support</name>
 
     <properties>
-        <Automatic-Module-Name>org.chrisbarbati.pushoverclient.servlet</Automatic-Module-Name>
+        <Automatic-Module-Name>dev.chrisbarbati.pushoverclient.servlet</Automatic-Module-Name>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>org.chrisbarbati</groupId>
+            <groupId>dev.chrisbarbati</groupId>
             <artifactId>pushover-client</artifactId>
             <version>${project.version}</version>
         </dependency>

@@ -2,6 +2,13 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.8.0] - 2026-10-09
+
+### Changed
+- Renamed the Maven `groupId` from `org.chrisbarbati` to `dev.chrisbarbati` and the Java packages from `org.chrisbarbati.pushoverclient*` to `dev.chrisbarbati.pushoverclient*`, matching the `chrisbarbati.dev` domain used as the Maven Central namespace
+- Updated `Automatic-Module-Name` values to `dev.chrisbarbati.pushoverclient[.servlet/.jetty/.tomcat]`
+- Note: this is a breaking coordinate/import change for early consumers; both the groupId and all import statements must be updated accordingly
+
 ## [0.7.1] - 2026-10-09
 
 ### Changed

@@ -136,10 +136,10 @@ Current integration coverage includes:
 ```java
 import java.io.IOException;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
 
 public final class SendMessageExample {
     private SendMessageExample() {
@@ -164,8 +164,8 @@ User/group validation before storing or sending to a target key:
 ```java
 import java.io.IOException;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 
 public final class ValidateUserExample {
     private ValidateUserExample() {
@@ -191,12 +191,12 @@ Receipt follow-up for emergency notifications:
 ```java
 import java.io.IOException;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.message.MessageResponse;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 
 public final class EmergencyReceiptExample {
     private EmergencyReceiptExample() {
@@ -237,11 +237,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 
 public final class EmergencyPollingAsyncExample {
     private EmergencyPollingAsyncExample() {
@@ -298,12 +298,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.servlet.CallbackServlets;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import dev.chrisbarbati.pushoverclient.callback.servlet.CallbackServlets;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 
 public final class ServletManagedCallbackExample {
     private ServletManagedCallbackExample() {
@@ -359,12 +359,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackHandlers;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import dev.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackHandlers;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 
 public final class ExistingJettyCallbackExample {
     private ExistingJettyCallbackExample() {
@@ -417,12 +417,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackServer;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import dev.chrisbarbati.pushoverclient.callback.jetty.JettyCallbackServer;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 
 public final class SelfManagedJettyCallbackExample {
     private SelfManagedJettyCallbackExample() {
@@ -477,12 +477,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.chrisbarbati.pushoverclient.PushoverClient;
-import org.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
-import org.chrisbarbati.pushoverclient.callback.tomcat.TomcatCallbackServer;
-import org.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import org.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import org.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
+import dev.chrisbarbati.pushoverclient.callback.tomcat.TomcatCallbackServer;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 
 public final class SelfManagedTomcatCallbackExample {
     private SelfManagedTomcatCallbackExample() {
