@@ -2,6 +2,14 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [0.9.0] - 2026-10-10
+
+### Added
+- Glances API support via `POST /1/glances.json` (`sendGlance`) with typed `GlanceRequest`/`GlanceResponse` models, client-side validation (at least one data field, 100-char text limits, `percent` 0-100), and unit coverage
+
+### Changed
+- README scope is now explicit: the **Groups administration** and **Subscription**
+
 ## [0.8.0] - 2026-10-09
 
 ### Changed

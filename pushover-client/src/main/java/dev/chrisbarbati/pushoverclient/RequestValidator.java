@@ -3,6 +3,7 @@ package dev.chrisbarbati.pushoverclient;
 import dev.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import dev.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
+import dev.chrisbarbati.pushoverclient.model.glance.GlanceRequest;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 
@@ -114,6 +115,47 @@ final class RequestValidator {
             throw new PushoverClientException("receiptId must be a 30-character alphanumeric identifier");
         }
         return normalized;
+    }
+
+    /**
+     * Applies client-side validation for a glance (widget) update.
+     *
+     * @param request glance request to validate
+     * @throws PushoverClientException when one or more constraints are violated
+     * @since 0.9.0
+     */
+    void validateGlance(GlanceRequest request) {
+        Objects.requireNonNull(request, "request is required");
+
+        if (PushoverStrings.isBlank(request.user()) || !IDENTIFIER.matcher(request.user()).matches()) {
+            throw new PushoverClientException("glance user must be a 30-character alphanumeric identifier");
+        }
+        if (!PushoverStrings.isBlank(request.device()) && !DEVICE_NAME.matcher(request.device()).matches()) {
+            throw new PushoverClientException("glance device must be a single valid device name");
+        }
+        if (!hasGlanceDataField(request)) {
+            throw new PushoverClientException("glance requires at least one of title, text, subtext, count, or percent");
+        }
+        requireGlanceTextLength("title", request.title());
+        requireGlanceTextLength("text", request.text());
+        requireGlanceTextLength("subtext", request.subtext());
+        if (request.percent() != null && (request.percent() < 0 || request.percent() > 100)) {
+            throw new PushoverClientException("percent must be between 0 and 100 inclusive");
+        }
+    }
+
+    private static boolean hasGlanceDataField(GlanceRequest request) {
+        return !PushoverStrings.isBlank(request.title())
+                || !PushoverStrings.isBlank(request.text())
+                || !PushoverStrings.isBlank(request.subtext())
+                || request.count() != null
+                || request.percent() != null;
+    }
+
+    private static void requireGlanceTextLength(String fieldName, String value) {
+        if (!PushoverStrings.isBlank(value) && value.length() > 100) {
+            throw new PushoverClientException(fieldName + " exceeds 100 characters");
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ import dev.chrisbarbati.pushoverclient.exception.PushoverApiException;
 import dev.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import dev.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
+import dev.chrisbarbati.pushoverclient.model.glance.GlanceRequest;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
@@ -217,6 +218,55 @@ class PushoverClientHttpTest {
         String path = request.getPath();
         assertNotNull(path);
         assertTrue(path.startsWith("/1/apps/limits.json?token="));
+    }
+
+    /**
+     * Verifies glance update request construction and success response parsing.
+     *
+     * @throws Exception when request processing fails
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_postsFormEncodedAndParsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-gl\"}"));
+
+        var response = client.sendGlance(GlanceRequest.builder(USER)
+                .device("watch")
+                .text("Widgets sold")
+                .count(30)
+                .percent(75)
+                .build());
+
+        assertEquals(1, response.status());
+        assertEquals("req-gl", response.request());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/glances.json", request.getPath());
+        assertEquals(
+                "token=" + TOKEN + "&user=" + USER + "&device=watch&text=Widgets+sold&count=30&percent=75",
+                request.getBody().readUtf8()
+        );
+    }
+
+    /**
+     * Verifies glance failures map to {@link PushoverApiException}.
+     *
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_throwsApiExceptionOnFailureResponse() {
+        server.enqueue(new MockResponse().setResponseCode(400)
+                .setBody("{\"status\":0,\"request\":\"req-gl-fail\",\"errors\":[\"user identifier is invalid\"]}"));
+
+        PushoverApiException ex = assertThrows(
+                PushoverApiException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).text("test").build())
+        );
+
+        assertEquals(400, ex.getHttpStatus());
+        assertEquals("req-gl-fail", ex.getRequestId());
+        assertTrue(ex.getErrors().contains("user identifier is invalid"));
     }
 
     /**

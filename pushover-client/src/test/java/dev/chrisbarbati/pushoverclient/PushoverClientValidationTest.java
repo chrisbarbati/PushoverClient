@@ -1,6 +1,7 @@
 package dev.chrisbarbati.pushoverclient;
 
 import dev.chrisbarbati.pushoverclient.exception.PushoverClientException;
+import dev.chrisbarbati.pushoverclient.model.glance.GlanceRequest;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import org.junit.jupiter.api.Test;
@@ -281,6 +282,94 @@ class PushoverClientValidationTest {
                 .retry(30)
                 .expire(300)
                 .build();
+    }
+
+    /**
+     * Verifies a glance update requires at least one data field.
+     *
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_rejectsMissingDataFields() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).build())
+        );
+    }
+
+    /**
+     * Verifies a glance update rejects an invalid user key.
+     *
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_rejectsInvalidUser() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder("short").text("x").build())
+        );
+    }
+
+    /**
+     * Verifies a glance update rejects a device name outside the documented character set.
+     *
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_rejectsInvalidDevice() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).device("bad device name!").text("x").build())
+        );
+    }
+
+    /**
+     * Verifies a glance update rejects title, text, and subtext over 100 characters.
+     *
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_rejectsOversizedTextFields() {
+        PushoverClient client = new PushoverClient(TOKEN);
+        String longValue = "x".repeat(101);
+
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).title(longValue).build())
+        );
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).text(longValue).build())
+        );
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).subtext(longValue).count(1).build())
+        );
+    }
+
+    /**
+     * Verifies a glance update rejects a percent value outside 0..100.
+     *
+     * @since 0.9.0
+     */
+    @Test
+    void sendGlance_rejectsPercentOutOfRange() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).percent(-1).build())
+        );
+        assertThrows(
+                PushoverClientException.class,
+                () -> client.sendGlance(GlanceRequest.builder(USER).percent(101).build())
+        );
     }
 }
 

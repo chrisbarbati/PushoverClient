@@ -8,6 +8,8 @@ import dev.chrisbarbati.pushoverclient.model.LimitsResponse;
 import dev.chrisbarbati.pushoverclient.model.SoundsResponse;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import dev.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
+import dev.chrisbarbati.pushoverclient.model.glance.GlanceRequest;
+import dev.chrisbarbati.pushoverclient.model.glance.GlanceResponse;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
@@ -307,6 +309,38 @@ public class PushoverClient {
     public LimitsResponse getLimits() throws IOException, InterruptedException {
         LOGGER.debug("Fetching limits from endpoint={}", PushoverEndpoints.LIMITS);
         return transport.getJson(PushoverEndpoints.LIMITS, LimitsResponse.class);
+    }
+
+    /**
+     * Updates a glance (widget) via {@code /1/glances.json}.
+     *
+     * <p>Only the supplied data fields are overwritten; a blank field clears it server-side.</p>
+     *
+     * @param request glance request with at least one data field
+     * @return parsed success response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when request validation fails
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 0.9.0
+     */
+    public GlanceResponse sendGlance(GlanceRequest request) throws IOException, InterruptedException {
+        validator.validateGlance(request);
+        LOGGER.debug("Sending glance update: endpoint={}, userHasDevice={}", PushoverEndpoints.GLANCES, request.device() != null);
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("user", request.user());
+        PushoverStrings.putIfPresent(fields, "device", request.device());
+        PushoverStrings.putIfPresent(fields, "title", request.title());
+        PushoverStrings.putIfPresent(fields, "text", request.text());
+        PushoverStrings.putIfPresent(fields, "subtext", request.subtext());
+        if (request.count() != null) {
+            fields.put("count", Integer.toString(request.count()));
+        }
+        if (request.percent() != null) {
+            fields.put("percent", Integer.toString(request.percent()));
+        }
+        return transport.postForm(PushoverEndpoints.GLANCES, fields, GlanceResponse.class);
     }
 
     /**

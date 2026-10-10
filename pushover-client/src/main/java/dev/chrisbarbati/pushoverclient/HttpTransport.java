@@ -7,6 +7,7 @@ import dev.chrisbarbati.pushoverclient.model.ApiErrorResponse;
 import dev.chrisbarbati.pushoverclient.model.LimitsResponse;
 import dev.chrisbarbati.pushoverclient.model.SoundsResponse;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
+import dev.chrisbarbati.pushoverclient.model.glance.GlanceResponse;
 import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
@@ -249,6 +250,9 @@ final class HttpTransport {
         if (value instanceof MessageResponse messageResponse) {
             return messageResponse.status();
         }
+        if (value instanceof GlanceResponse glanceResponse) {
+            return glanceResponse.status();
+        }
         if (value instanceof UserGroupValidationResponse userGroupValidationResponse) {
             return userGroupValidationResponse.status();
         }
@@ -276,6 +280,9 @@ final class HttpTransport {
     private static String extractRequestId(Object value) {
         if (value instanceof MessageResponse messageResponse) {
             return messageResponse.request();
+        }
+        if (value instanceof GlanceResponse glanceResponse) {
+            return glanceResponse.request();
         }
         if (value instanceof UserGroupValidationResponse userGroupValidationResponse) {
             return userGroupValidationResponse.request();

@@ -3,17 +3,16 @@
 [![CI](https://github.com/chrisbarbati/PushoverClient/actions/workflows/ci.yml/badge.svg)](https://github.com/chrisbarbati/PushoverClient/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A low-dependency, full-featured Java client for the Pushover REST API, with first-class async acknowledgement support.
+A low-dependency, full-featured Java client for the Pushover REST API, with async acknowledgement support.
 
 ## Overview
 
-PushoverClient sends Pushover notifications from scripts, cron jobs, CI pipelines,
-and monitoring/alerting tools without dragging in a heavyweight HTTP client or
-framework. The core jar depends only on `jackson-databind` and `slf4j-api`, uses the
+PushoverClient is designed to let you send Pushover notifications from your Java applications without dragging in a heavyweight
+HTTP client or framework. The core jar depends only on `jackson-databind` and `slf4j-api`, uses the
 JDK's `java.net.http.HttpClient`, and exposes immutable request/response models behind
 a single `PushoverClient` facade.
 
-The client is designed to cover the full documented Pushover API, not just the send path:
+The client is designed to cover the full application-facing Pushover API, not just the send path:
 
 - **Messages** - every documented field, including title, url/url_title, devices, sounds, timestamps, HTML/monospace rendering, priority, ttl, and emergency `retry`/`expire`/`callback`/`tags`.
 - **Attachments** - both encodings: multipart binary (`attachment`) and Base64 (`attachment_base64`).
@@ -21,10 +20,20 @@ The client is designed to cover the full documented Pushover API, not just the s
 - **Emergency receipts** - query receipt status via `/1/receipts/{receipt}.json`, and cancel by receipt or by tag.
 - **Async acknowledgement** - send an emergency message and complete a future when it is acknowledged, by polling the receipt or fielding a callback from an optional embedded (`JettyCallbackServer`/`TomcatCallbackServer`) or host-managed (servlet / `JettyCallbackHandlers`) callback server.
 - **Accounts** - available sounds (`/1/sounds.json`), usage limits (`/1/apps/limits.json`), and user/group key validation (`/1/users/validate.json`).
+- **Glances** - update widget data (Apple Watch) via `/1/glances.json`. Please note that this feature has not been integration tested at this time, since I don't have an Apple Watch.
+
+Out of current scope:
+
+ - **Groups administration**
+ - **Subscription**
+
+This client targets server-side applications that send Pushover notifications, and administration is deliberately omitted at this time.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
 ### Design goals
+
+I designed this client because I wanted the following:
 
 - **Full-featured** - intended to cover the entire documented Pushover API surface.
 - **Low footprint** - two runtime dependencies in the core module.
@@ -49,7 +58,7 @@ Add the core dependency to your build:
 <dependency>
     <groupId>dev.chrisbarbati</groupId>
     <artifactId>pushover-client</artifactId>
-    <version>0.8.0</version>
+    <version>0.9.0</version>
 </dependency>
 ```
 
