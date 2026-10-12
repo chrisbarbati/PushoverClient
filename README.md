@@ -62,7 +62,7 @@ Add the core dependency to your build:
 </dependency>
 ```
 
-Set your credentials, then use the inline `SendMessageExample` shown in [Programmatic usage](#programmatic-usage) below to send a first notification:
+Set your credentials, then paste the `SendMessageExample` class shown in [Programmatic usage](#programmatic-usage) into your own project; it reads these variables from the environment:
 
 ```bash
 export PUSHOVER_APP_TOKEN="your_app_token"
@@ -70,7 +70,13 @@ export PUSHOVER_USER_KEY="your_user_key"
 export PUSHOVER_ENCRYPTION_KEY="64_char_hex_key_optional"
 ```
 
-The example wires `send(...)` with these values and sends a normal-priority notification.
+Run it with the single-file source launcher (Java 11+) with the jar on the classpath:
+
+```bash
+java -cp pushover-client-0.9.0.jar SendMessageExample.java
+```
+
+The example reads the three values from the environment, sends a normal-priority notification, and prints the request id. It exits quietly if `PUSHOVER_APP_TOKEN` or `PUSHOVER_USER_KEY` is missing.
 
 ## Tests
 
@@ -88,7 +94,6 @@ template) or as system properties, and skip with a warning when credentials are 
 ```bash
 ./mvnw -q verify
 ```
-- intentional live failures (invalid user and invalid token)
 
 ## Programmatic usage
 
@@ -104,16 +109,25 @@ public final class SendMessageExample {
     private SendMessageExample() {
     }
 
-    public static MessageResponse send(String appToken, String userKey, String encryptionHexKey)
-            throws IOException, InterruptedException {
-        PushoverClient client = new PushoverClient(appToken, encryptionHexKey);
+    public static void main(String[] args) throws IOException, InterruptedException {
+        String appToken = System.getenv("PUSHOVER_APP_TOKEN");
+        String userKey = System.getenv("PUSHOVER_USER_KEY");
+        String encryptionKey = System.getenv("PUSHOVER_ENCRYPTION_KEY");
+
+        if (appToken == null || appToken.isBlank() || userKey == null || userKey.isBlank()) {
+            System.out.println("Set PUSHOVER_APP_TOKEN and PUSHOVER_USER_KEY to run this example.");
+            return;
+        }
+
+        PushoverClient client = new PushoverClient(appToken, encryptionKey);
 
         MessageRequest request = MessageRequest.builder(userKey, "Backup completed")
                 .title("DB Job")
                 .priority(MessagePriority.NORMAL)
                 .build();
 
-        return client.sendMessage(request);
+        MessageResponse response = client.sendMessage(request);
+        System.out.println("Message sent. Request ID: " + response.request());
     }
 }
 ```
