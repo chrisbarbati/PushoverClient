@@ -14,6 +14,13 @@
     <artifactId>pushover-client-jetty</artifactId>
     <name>Pushover Client Jetty Callback Support</name>
 
+    <url>https://github.com/chrisbarbati/PushoverClient</url>
+    <scm>
+        <connection>scm:git:https://github.com/chrisbarbati/PushoverClient.git</connection>
+        <developerConnection>scm:git:git@github.com:chrisbarbati/PushoverClient.git</developerConnection>
+        <url>https://github.com/chrisbarbati/PushoverClient</url>
+    </scm>
+
     <properties>
         <Automatic-Module-Name>dev.chrisbarbati.pushoverclient.jetty</Automatic-Module-Name>
     </properties>
