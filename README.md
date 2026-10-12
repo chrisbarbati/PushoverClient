@@ -35,7 +35,7 @@ See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
 I designed this client because I wanted the following:
 
-- **Full-featured** - intended to cover the entire documented Pushover API surface.
+- **Full-featured** - intended to cover the entire documented Pushover API surface (excluding some administration functions, although this may change in the future).
 - **Low footprint** - two runtime dependencies in the core module.
 - **Modern Java 17** - `java.net.http`, records, and fluent builders, no framework.
 - **One facade** - all operations live on the single `PushoverClient` class.
