@@ -21,13 +21,8 @@ The client is designed to cover the full application-facing Pushover API, not ju
 - **Async acknowledgement** - send an emergency message and complete a future when it is acknowledged, by polling the receipt or fielding a callback from an optional embedded (`JettyCallbackServer`/`TomcatCallbackServer`) or host-managed (servlet / `JettyCallbackHandlers`) callback server.
 - **Accounts** - available sounds (`/1/sounds.json`), usage limits (`/1/apps/limits.json`), and user/group key validation (`/1/users/validate.json`).
 - **Glances** - update widget data (Apple Watch) via `/1/glances.json`. Please note that this feature has not been integration tested at this time, since I don't have an Apple Watch.
-
-Out of current scope:
-
- - **Groups administration**
- - **Subscription**
-
-This client targets server-side applications that send Pushover notifications, and administration is deliberately omitted at this time.
+- **Groups** - full delivery group administration via `/1/groups.json`, including create, list, retrieve, add/remove members, disable/enable members, and rename.
+- **Subscriptions** - user key migration via `/1/subscriptions/migrate.json` to convert existing user keys into subscription keys.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
@@ -35,7 +30,7 @@ See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 
 I designed this client because I wanted the following:
 
-- **Full-featured** - intended to cover the entire documented Pushover API surface (excluding some administration functions, although this may change in the future).
+- **Full-featured** - covers the entire documented Pushover API surface.
 - **Low footprint** - two runtime dependencies in the core module.
 - **Modern Java 17** - `java.net.http`, records, and fluent builders, no framework.
 - **One facade** - all operations live on the single `PushoverClient` class.
@@ -58,7 +53,7 @@ Add the core dependency to your build:
 <dependency>
     <groupId>dev.chrisbarbati</groupId>
     <artifactId>pushover-client</artifactId>
-    <version>0.9.0</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -73,7 +68,7 @@ export PUSHOVER_ENCRYPTION_KEY="64_char_hex_key_optional"
 Run it with the single-file source launcher (Java 11+) with the jar on the classpath:
 
 ```bash
-java -cp pushover-client-0.9.0.jar SendMessageExample.java
+java -cp pushover-client-1.0.0.jar SendMessageExample.java
 ```
 
 The example reads the three values from the environment, sends a normal-priority notification, and prints the request id. It exits quietly if `PUSHOVER_APP_TOKEN` or `PUSHOVER_USER_KEY` is missing.
@@ -510,6 +505,59 @@ Notes:
 - Both async APIs also provide `Duration` overloads for per-call expiration overrides.
 - `sendEmergencyMessageAndAwaitCallback(...)` uses the request callback when present. If it conflicts with the configured default callback URL, the request value wins and a WARN log is emitted unless `warnOnConflictingCallback(false)` is configured.
 - `JettyCallbackServer` requires a caller-supplied `ExecutorService` backed by `ThreadPoolExecutor`, so the library does not hide its callback-server thread usage.
+
+### Group administration
+
+```java
+import java.io.IOException;
+
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.group.GroupCreateResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupDetailsResponse;
+
+public final class GroupAdministrationExample {
+    private GroupAdministrationExample() {
+    }
+
+    public static void manageGroup(String appToken, String userKey) throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken);
+
+        GroupCreateResponse created = client.createGroup("On-call rotation");
+        String groupKey = created.group();
+
+        client.addUserToGroup(groupKey, userKey, null, "Primary on-call");
+        client.disableUserInGroup(groupKey, userKey, null);
+        client.enableUserInGroup(groupKey, userKey, null);
+
+        GroupDetailsResponse details = client.getGroup(groupKey);
+        System.out.println("Group " + details.name() + " has " + details.users().size() + " member(s)");
+    }
+}
+```
+
+### Subscription migration
+
+```java
+import java.io.IOException;
+
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.subscription.SubscriptionMigrationResponse;
+
+public final class SubscriptionMigrationExample {
+    private SubscriptionMigrationExample() {
+    }
+
+    public static String migrate(String appToken, String subscriptionCode, String userKey)
+            throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken);
+
+        SubscriptionMigrationResponse response = client.migrateUserToSubscription(subscriptionCode, userKey, null, null);
+
+        // Store response.subscribedUserKey() in place of the original user key.
+        return response.subscribedUserKey();
+    }
+}
+```
 
 ### Async resource usage
 

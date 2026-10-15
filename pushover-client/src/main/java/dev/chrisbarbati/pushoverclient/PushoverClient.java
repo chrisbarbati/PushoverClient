@@ -10,12 +10,17 @@ import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import dev.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
 import dev.chrisbarbati.pushoverclient.model.glance.GlanceRequest;
 import dev.chrisbarbati.pushoverclient.model.glance.GlanceResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupCreateResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupDetailsResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupListResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupMutationResponse;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
+import dev.chrisbarbati.pushoverclient.model.subscription.SubscriptionMigrationResponse;
 import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +42,7 @@ import java.util.concurrent.ExecutorService;
  * validation, field encoding, and the async receipt lifecycle are handled by
  * package-private collaborators, so the public API surface stays in one place.</p>
  *
- * @apiNote This client currently targets messages, user/group validation, receipts, sounds, and app limits endpoints.
+ * @apiNote This client currently targets messages, user/group validation, receipts, sounds, app limits, glances, delivery groups, and subscription migration endpoints.
  * @implNote Validation follows documented Pushover API constraints before HTTP submission.
  * @since 0.1.0
  * @author Christian Barbati
@@ -416,5 +421,243 @@ public class PushoverClient {
         }
         validator.validate(request);
         return request;
+    }
+
+    /**
+     * Creates a new delivery group via {@code /1/groups.json}.
+     *
+     * @param name group name
+     * @return parsed creation response containing the new group key
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the name is blank
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupCreateResponse createGroup(String name) throws IOException, InterruptedException {
+        String normalizedName = validator.requireGroupName(name);
+        LOGGER.debug("Creating group: endpoint={}", PushoverEndpoints.GROUPS);
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("name", normalizedName);
+        return transport.postForm(PushoverEndpoints.GROUPS + ".json", fields, GroupCreateResponse.class);
+    }
+
+    /**
+     * Lists the delivery groups on the account via {@code GET /1/groups.json}.
+     *
+     * @return parsed group listing response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupListResponse listGroups() throws IOException, InterruptedException {
+        LOGGER.debug("Listing groups from endpoint={}", PushoverEndpoints.GROUPS);
+        return transport.getJson(PushoverEndpoints.GROUPS + ".json", GroupListResponse.class);
+    }
+
+    /**
+     * Retrieves a delivery group's details and members via {@code GET /1/groups/{groupKey}.json}.
+     *
+     * @param groupKey the delivery group key
+     * @return parsed group details response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the group key is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupDetailsResponse getGroup(String groupKey) throws IOException, InterruptedException {
+        String normalizedGroupKey = validator.requireGroupKey(groupKey);
+        LOGGER.debug("Fetching group details: endpoint={}, groupKey={}", PushoverEndpoints.GROUPS, normalizedGroupKey);
+        return transport.getJson(
+                PushoverEndpoints.GROUPS + "/" + PushoverStrings.encodePathSegment(normalizedGroupKey) + ".json",
+                GroupDetailsResponse.class
+        );
+    }
+
+    /**
+     * Adds an existing user to a delivery group via {@code POST /1/groups/{groupKey}/add_user.json}.
+     *
+     * @param groupKey the delivery group key
+     * @param userKey the user key to add
+     * @param device optional device name to restrict the membership to
+     * @param memo optional free-text memo (max 200 characters)
+     * @return parsed mutation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when a parameter is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupMutationResponse addUserToGroup(String groupKey, String userKey, String device, String memo)
+            throws IOException, InterruptedException {
+        String normalizedGroupKey = validator.requireGroupKey(groupKey);
+        String normalizedUser = validator.requireUserOrGroup(userKey);
+        String normalizedDevice = validator.requireSingleDeviceName(device);
+        String normalizedMemo = validator.requireMemo(memo);
+        LOGGER.debug(
+                "Adding user to group: endpoint={}, groupKey={}, device={}",
+                PushoverEndpoints.GROUPS,
+                normalizedGroupKey,
+                normalizedDevice
+        );
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("user", normalizedUser);
+        PushoverStrings.putIfPresent(fields, "device", normalizedDevice);
+        PushoverStrings.putIfPresent(fields, "memo", normalizedMemo);
+        return transport.postForm(
+                PushoverEndpoints.GROUPS + "/" + PushoverStrings.encodePathSegment(normalizedGroupKey) + "/add_user.json",
+                fields,
+                GroupMutationResponse.class
+        );
+    }
+
+    /**
+     * Removes a user from a delivery group via {@code POST /1/groups/{groupKey}/remove_user.json}.
+     *
+     * @param groupKey the delivery group key
+     * @param userKey the user key to remove
+     * @param device optional device name to match for the membership
+     * @return parsed mutation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when a parameter is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupMutationResponse removeUserFromGroup(String groupKey, String userKey, String device)
+            throws IOException, InterruptedException {
+        return mutateGroupMember(groupKey, userKey, device, "remove_user.json");
+    }
+
+    /**
+     * Temporarily disables a user in a delivery group via {@code POST /1/groups/{groupKey}/disable_user.json}.
+     *
+     * @param groupKey the delivery group key
+     * @param userKey the user key to disable
+     * @param device optional device name to match for the membership
+     * @return parsed mutation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when a parameter is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupMutationResponse disableUserInGroup(String groupKey, String userKey, String device)
+            throws IOException, InterruptedException {
+        return mutateGroupMember(groupKey, userKey, device, "disable_user.json");
+    }
+
+    /**
+     * Re-enables a disabled user in a delivery group via {@code POST /1/groups/{groupKey}/enable_user.json}.
+     *
+     * @param groupKey the delivery group key
+     * @param userKey the user key to re-enable
+     * @param device optional device name to match for the membership
+     * @return parsed mutation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when a parameter is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupMutationResponse enableUserInGroup(String groupKey, String userKey, String device)
+            throws IOException, InterruptedException {
+        return mutateGroupMember(groupKey, userKey, device, "enable_user.json");
+    }
+
+    /**
+     * Renames a delivery group via {@code POST /1/groups/{groupKey}/rename.json}.
+     *
+     * @param groupKey the delivery group key
+     * @param name new group name
+     * @return parsed mutation response
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when the group key or name is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public GroupMutationResponse renameGroup(String groupKey, String name) throws IOException, InterruptedException {
+        String normalizedGroupKey = validator.requireGroupKey(groupKey);
+        String normalizedName = validator.requireGroupName(name);
+        LOGGER.debug("Renaming group: endpoint={}, groupKey={}", PushoverEndpoints.GROUPS, normalizedGroupKey);
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("name", normalizedName);
+        return transport.postForm(
+                PushoverEndpoints.GROUPS + "/" + PushoverStrings.encodePathSegment(normalizedGroupKey) + "/rename.json",
+                fields,
+                GroupMutationResponse.class
+        );
+    }
+
+    /**
+     * Migrates an existing user key to a subscription via {@code POST /1/subscriptions/migrate.json}.
+     *
+     * <p>Upon success the returned {@code subscribedUserKey} should be stored in place of the original user key.</p>
+     *
+     * @param subscriptionCode the subscription code from the application settings
+     * @param userKey the user key to migrate
+     * @param deviceName optional device name the subscription should be limited to
+     * @param sound optional preferred default sound for the subscribed user
+     * @return parsed migration response containing the new subscription user key
+     * @throws IOException when the HTTP call fails
+     * @throws InterruptedException when the call is interrupted
+     * @throws PushoverClientException when a parameter is invalid
+     * @throws PushoverApiException when Pushover returns a non-success response
+     * @since 1.0.0
+     */
+    public SubscriptionMigrationResponse migrateUserToSubscription(
+            String subscriptionCode,
+            String userKey,
+            String deviceName,
+            String sound
+    ) throws IOException, InterruptedException {
+        String normalizedCode = validator.requireSubscriptionCode(subscriptionCode);
+        String normalizedUser = validator.requireUserOrGroup(userKey);
+        String normalizedDevice = validator.requireSingleDeviceName(deviceName);
+        LOGGER.debug(
+                "Migrating user to subscription: endpoint={}, device={}",
+                PushoverEndpoints.SUBSCRIPTIONS_MIGRATE,
+                normalizedDevice
+        );
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("subscription", normalizedCode);
+        fields.put("user", normalizedUser);
+        PushoverStrings.putIfPresent(fields, "device_name", normalizedDevice);
+        PushoverStrings.putIfPresent(fields, "sound", sound);
+        return transport.postForm(PushoverEndpoints.SUBSCRIPTIONS_MIGRATE, fields, SubscriptionMigrationResponse.class);
+    }
+
+    private GroupMutationResponse mutateGroupMember(
+            String groupKey,
+            String userKey,
+            String device,
+            String action
+    ) throws IOException, InterruptedException {
+        String normalizedGroupKey = validator.requireGroupKey(groupKey);
+        String normalizedUser = validator.requireUserOrGroup(userKey);
+        String normalizedDevice = validator.requireSingleDeviceName(device);
+        LOGGER.debug(
+                "Mutating group member: endpoint={}, action={}, groupKey={}, device={}",
+                PushoverEndpoints.GROUPS,
+                action,
+                normalizedGroupKey,
+                normalizedDevice
+        );
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("user", normalizedUser);
+        PushoverStrings.putIfPresent(fields, "device", normalizedDevice);
+        return transport.postForm(
+                PushoverEndpoints.GROUPS + "/" + PushoverStrings.encodePathSegment(normalizedGroupKey) + "/" + action,
+                fields,
+                GroupMutationResponse.class
+        );
     }
 }

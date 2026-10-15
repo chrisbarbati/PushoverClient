@@ -4,14 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.chrisbarbati.pushoverclient.exception.PushoverApiException;
 import dev.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import dev.chrisbarbati.pushoverclient.model.ApiErrorResponse;
-import dev.chrisbarbati.pushoverclient.model.LimitsResponse;
-import dev.chrisbarbati.pushoverclient.model.SoundsResponse;
+import dev.chrisbarbati.pushoverclient.model.PushoverResponse;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
-import dev.chrisbarbati.pushoverclient.model.glance.GlanceResponse;
-import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
-import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
-import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
-import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +64,7 @@ final class HttpTransport {
      * @throws IOException when the HTTP call fails
      * @throws InterruptedException when the call is interrupted
      */
-    <T> T getJson(String path, Class<T> responseType) throws IOException, InterruptedException {
+    <T extends PushoverResponse> T getJson(String path, Class<T> responseType) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(buildUri(path + "?token=" + PushoverStrings.encode(appToken)))
                 .header("Accept", "application/json")
                 .GET()
@@ -89,7 +83,7 @@ final class HttpTransport {
      * @throws IOException when the HTTP call fails
      * @throws InterruptedException when the call is interrupted
      */
-    <T> T postForm(String path, Map<String, String> fields, Class<T> responseType) throws IOException, InterruptedException {
+    <T extends PushoverResponse> T postForm(String path, Map<String, String> fields, Class<T> responseType) throws IOException, InterruptedException {
         Map<String, String> requestFields = new LinkedHashMap<>();
         requestFields.put("token", appToken);
         requestFields.putAll(fields);
@@ -106,7 +100,7 @@ final class HttpTransport {
      * @throws IOException when the HTTP call fails
      * @throws InterruptedException when the call is interrupted
      */
-    <T> T send(HttpRequest httpRequest, Class<T> responseType) throws IOException, InterruptedException {
+    <T extends PushoverResponse> T send(HttpRequest httpRequest, Class<T> responseType) throws IOException, InterruptedException {
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         return parseResponse(response, responseType);
     }
@@ -170,34 +164,32 @@ final class HttpTransport {
      * @throws PushoverApiException when API returns an error response body
      * @throws PushoverClientException when the success response body cannot be parsed
      */
-    private <T> T parseResponse(HttpResponse<String> response, Class<T> responseType) {
+    private <T extends PushoverResponse> T parseResponse(HttpResponse<String> response, Class<T> responseType) {
         String body = response.body();
         try {
             int httpStatus = response.statusCode();
             if (httpStatus >= 200 && httpStatus < 300) {
                 T value = objectMapper.readValue(body, responseType);
-                Integer status = extractStatus(value);
-                String requestId = extractRequestId(value);
-                if (status != null && status != 1) {
+                if (value.status() != 1) {
                     ApiErrorResponse error = parseErrorBody(body);
                     List<String> errors = error == null || error.errors() == null ? List.of() : error.errors();
                     LOGGER.warn(
                             "API returned non-success status despite HTTP success: responseType={}, httpStatus={}, requestId={}",
                             responseType.getSimpleName(),
                             httpStatus,
-                            requestId
+                            value.request()
                     );
                     throw new PushoverApiException(
                             "Pushover API reported failure",
                             httpStatus,
-                            requestId,
+                            value.request(),
                             errors.isEmpty() ? List.of("status != 1") : errors
                     );
                 }
 
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("API call succeeded: responseType={}, httpStatus={}, requestId={}",
-                            responseType.getSimpleName(), httpStatus, requestId);
+                            responseType.getSimpleName(), httpStatus, value.request());
                 }
                 return value;
             }
@@ -238,68 +230,6 @@ final class HttpTransport {
         } catch (IOException ignored) {
             return null;
         }
-    }
-
-    /**
-     * Extracts the common API status field from known success payloads.
-     *
-     * @param value parsed success payload
-     * @return status when available, otherwise null
-     */
-    private static Integer extractStatus(Object value) {
-        if (value instanceof MessageResponse messageResponse) {
-            return messageResponse.status();
-        }
-        if (value instanceof GlanceResponse glanceResponse) {
-            return glanceResponse.status();
-        }
-        if (value instanceof UserGroupValidationResponse userGroupValidationResponse) {
-            return userGroupValidationResponse.status();
-        }
-        if (value instanceof SoundsResponse soundsResponse) {
-            return soundsResponse.status();
-        }
-        if (value instanceof LimitsResponse limitsResponse) {
-            return limitsResponse.status();
-        }
-        if (value instanceof ReceiptStatusResponse receiptStatusResponse) {
-            return receiptStatusResponse.status();
-        }
-        if (value instanceof ReceiptCancellationResponse receiptCancellationResponse) {
-            return receiptCancellationResponse.status();
-        }
-        return null;
-    }
-
-    /**
-     * Extracts the common API request id field from known success payloads.
-     *
-     * @param value parsed success payload
-     * @return request id when available, otherwise null
-     */
-    private static String extractRequestId(Object value) {
-        if (value instanceof MessageResponse messageResponse) {
-            return messageResponse.request();
-        }
-        if (value instanceof GlanceResponse glanceResponse) {
-            return glanceResponse.request();
-        }
-        if (value instanceof UserGroupValidationResponse userGroupValidationResponse) {
-            return userGroupValidationResponse.request();
-        }
-        if (value instanceof SoundsResponse soundsResponse) {
-            return soundsResponse.request();
-        }
-        if (value instanceof LimitsResponse limitsResponse) {
-            return limitsResponse.request();
-        }
-        if (value instanceof ReceiptStatusResponse receiptStatusResponse) {
-            return receiptStatusResponse.request();
-        }
-        if (value instanceof ReceiptCancellationResponse receiptCancellationResponse) {
-            return receiptCancellationResponse.request();
-        }
-        return null;
     }
 
     /**

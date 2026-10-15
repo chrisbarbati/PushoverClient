@@ -20,6 +20,6 @@ public record LimitsResponse(
         int limit,
         int remaining,
         long reset
-) {
+) implements PushoverResponse {
 }
 

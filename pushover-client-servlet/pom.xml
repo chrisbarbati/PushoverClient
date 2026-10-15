@@ -13,6 +13,7 @@
 
     <artifactId>pushover-client-servlet</artifactId>
     <name>Pushover Client Servlet Callback Support</name>
+    <description>Generic servlet callback adapter for host-managed Pushover emergency acknowledgement.</description>
 
     <url>https://github.com/chrisbarbati/PushoverClient</url>
     <scm>

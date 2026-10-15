@@ -201,4 +201,60 @@ final class RequestValidator {
     String requireTag(String tag) {
         return PushoverStrings.requireNonBlank(tag, "tag is required").trim();
     }
+
+    /**
+     * Validates and normalizes a delivery group key used in path parameters.
+     *
+     * @param groupKey candidate group key
+     * @return normalized group key
+     * @throws PushoverClientException when the group key is blank or malformed
+     * @since 1.0.0
+     */
+    String requireGroupKey(String groupKey) {
+        String normalized = PushoverStrings.requireNonBlank(groupKey, "groupKey is required").trim();
+        if (!IDENTIFIER.matcher(normalized).matches()) {
+            throw new PushoverClientException("groupKey must be a 30-character alphanumeric identifier");
+        }
+        return normalized;
+    }
+
+    /**
+     * Validates and normalizes a delivery group name.
+     *
+     * @param name candidate group name
+     * @return normalized group name
+     * @throws PushoverClientException when the name is blank
+     * @since 1.0.0
+     */
+    String requireGroupName(String name) {
+        return PushoverStrings.requireNonBlank(name, "name is required").trim();
+    }
+
+    /**
+     * Validates and normalizes an optional free-text memo for a group member.
+     *
+     * @param memo candidate memo, or null to omit
+     * @return normalized memo, or null when not supplied
+     * @throws PushoverClientException when the memo exceeds 200 characters
+     * @since 1.0.0
+     */
+    String requireMemo(String memo) {
+        String normalized = PushoverStrings.normalizeBlank(memo);
+        if (normalized != null && normalized.length() > 200) {
+            throw new PushoverClientException("memo exceeds 200 characters");
+        }
+        return normalized;
+    }
+
+    /**
+     * Validates and normalizes a subscription code used by the migration endpoint.
+     *
+     * @param subscriptionCode candidate subscription code
+     * @return normalized subscription code
+     * @throws PushoverClientException when the subscription code is blank
+     * @since 1.0.0
+     */
+    String requireSubscriptionCode(String subscriptionCode) {
+        return PushoverStrings.requireNonBlank(subscriptionCode, "subscriptionCode is required").trim();
+    }
 }

@@ -3,6 +3,8 @@ package dev.chrisbarbati.pushoverclient.model.receipt;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import dev.chrisbarbati.pushoverclient.model.PushoverResponse;
+
 /**
  * Response payload for receipt status lookups.
  *
@@ -35,6 +37,6 @@ public record ReceiptStatusResponse(
         @JsonProperty("expires_at") Long expiresAt,
         @JsonProperty("called_back") int calledBack,
         @JsonProperty("called_back_at") Long calledBackAt
-) {
+) implements PushoverResponse {
 }
 

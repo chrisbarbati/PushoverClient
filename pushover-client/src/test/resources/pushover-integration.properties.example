@@ -23,6 +23,11 @@ pushover.userKey=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 # Enables live group validation coverage when a real group key is provided.
 #pushover.groupKey=
 
+# The full delivery group lifecycle integration test runs whenever appToken and
+# userKey are configured. It creates a group (using userKey as the added member)
+# and leaves it behind because the Groups API has no delete endpoint; a warning
+# is logged with the group key so it can be removed manually.
+
 # Multipart attachment integration test (path must exist locally).
 #pushover.multipartAttachment.path=src/test/resources/attachments/test_pattern.jpg
 #pushover.multipartAttachment.contentType=image/jpeg

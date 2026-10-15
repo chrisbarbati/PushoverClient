@@ -2,6 +2,8 @@ package dev.chrisbarbati.pushoverclient.model.validation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import dev.chrisbarbati.pushoverclient.model.PushoverResponse;
+
 import java.util.List;
 
 /**
@@ -20,6 +22,6 @@ public record UserGroupValidationResponse(
         String request,
         List<String> devices,
         List<String> licenses
-) {
+) implements PushoverResponse {
 }
 

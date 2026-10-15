@@ -21,6 +21,10 @@ final class PushoverEndpoints {
     static final String CANCEL_BY_TAG = "/1/receipts/cancel_by_tag";
     /** Glances endpoint for updating glance (widget) data. */
     static final String GLANCES = "/1/glances.json";
+    /** Delivery groups endpoint prefix for group administration calls. */
+    static final String GROUPS = "/1/groups";
+    /** Subscription migration endpoint for converting existing user keys to subscriptions. */
+    static final String SUBSCRIPTIONS_MIGRATE = "/1/subscriptions/migrate.json";
 
     /**
      * Utility class.

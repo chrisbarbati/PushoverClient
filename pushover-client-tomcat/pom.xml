@@ -13,6 +13,7 @@
 
     <artifactId>pushover-client-tomcat</artifactId>
     <name>Pushover Client Tomcat Callback Support</name>
+    <description>Tomcat-backed self-managed CallbackServer for Pushover emergency acknowledgement.</description>
 
     <url>https://github.com/chrisbarbati/PushoverClient</url>
     <scm>

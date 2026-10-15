@@ -2,6 +2,8 @@ package dev.chrisbarbati.pushoverclient.model.glance;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import dev.chrisbarbati.pushoverclient.model.PushoverResponse;
+
 /**
  * Success response payload for the glances endpoint.
  *
@@ -13,5 +15,5 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record GlanceResponse(
         int status,
         String request
-) {
+) implements PushoverResponse {
 }

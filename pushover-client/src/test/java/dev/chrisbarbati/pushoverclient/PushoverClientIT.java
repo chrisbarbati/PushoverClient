@@ -6,6 +6,9 @@ import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import dev.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
+import dev.chrisbarbati.pushoverclient.model.group.GroupCreateResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupDetailsResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupListResponse;
 import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -512,6 +515,64 @@ class PushoverClientIT {
                     ex.getErrors()
             );
             throw new org.opentest4j.TestAbortedException("Emergency receipt lifecycle rejected by API and strict mode is disabled", ex);
+        }
+    }
+
+    /**
+     * Verifies the full delivery group lifecycle: create, list, retrieve, add a member, disable, enable, and rename.
+     *
+     * @apiNote The Pushover Groups API has no delete-group endpoint, so the created group remains after this test.
+     * A warning is logged with the group key so the caller can remove it manually from the Pushover website.
+     * @throws Exception when the API call fails unexpectedly
+     * @since 1.0.0
+     */
+    @Test
+    void live_groupsLifecycle() throws Exception {
+        String token = required("pushover.appToken");
+        String user = required("pushover.userKey");
+        PushoverClient client = new PushoverClient(token, optional("pushover.encryptionKey"));
+
+        String uniqueName = "PushoverClient IT " + (System.currentTimeMillis() / 1000L);
+        GroupCreateResponse created = client.createGroup(uniqueName);
+        assertEquals(1, created.status());
+        assertFalse(isBlank(created.group()));
+        String groupKey = created.group();
+
+        try {
+            GroupListResponse list = client.listGroups();
+            assertEquals(1, list.status());
+            assertNotNull(list.groups());
+            assertTrue(list.groups().stream().anyMatch(group -> groupKey.equals(group.group())));
+
+            GroupDetailsResponse details = client.getGroup(groupKey);
+            assertEquals(1, details.status());
+            assertEquals(uniqueName, details.name());
+
+            assertEquals(1, client.addUserToGroup(groupKey, user, null, "integration test member").status());
+            assertEquals(1, client.disableUserInGroup(groupKey, user, null).status());
+            assertEquals(1, client.enableUserInGroup(groupKey, user, null).status());
+
+            String renamedName = uniqueName + " (renamed)";
+            assertEquals(1, client.renameGroup(groupKey, renamedName).status());
+
+            GroupDetailsResponse renamedDetails = client.getGroup(groupKey);
+            assertEquals(1, renamedDetails.status());
+            assertEquals(renamedName, renamedDetails.name());
+
+            LOGGER.warn(
+                    "Groups integration test created delivery group '{}' (key={}), which the Pushover API cannot delete "
+                            + "programmatically. Delete it manually from the Pushover website if desired.",
+                    renamedName,
+                    groupKey
+            );
+        } catch (Exception ex) {
+            LOGGER.warn(
+                    "Groups integration test failed partway; a delivery group may remain (key={}, original name='{}'). "
+                            + "Delete it manually from the Pushover website if desired.",
+                    groupKey,
+                    uniqueName
+            );
+            throw ex;
         }
     }
 }

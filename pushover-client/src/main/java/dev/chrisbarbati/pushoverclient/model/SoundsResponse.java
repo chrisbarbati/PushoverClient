@@ -18,6 +18,6 @@ public record SoundsResponse(
         int status,
         String request,
         Map<String, String> sounds
-) {
+) implements PushoverResponse {
 }
 

@@ -2,6 +2,18 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [1.0.0] - 2026-10-15
+
+### Added
+- Delivery Groups API support via `/1/groups.json` with typed models: create, list, retrieve, add/remove members, disable/enable members, and rename
+- Subscription migration API support via `POST /1/subscriptions/migrate.json` with a typed response exposing the new `subscribed_user_key`
+- Live integration coverage for the full group lifecycle (create, list, retrieve, add member, disable, enable, rename).
+
+### Changed
+- README scope now covers the complete documented Pushover API surface; the Groups administration and Subscription exclusions are removed
+- Enriched project metadata (description, organization, issue management, CI management) and added per-module descriptions for a richer Maven Central / mvnrepository listing
+- Introduced a common `PushoverResponse` interface implemented by every success response record, so the transport layer reads `status` and `request` uniformly instead of using per-type dispatch
+
 ## [0.9.0] - 2026-10-10
 
 ### Added

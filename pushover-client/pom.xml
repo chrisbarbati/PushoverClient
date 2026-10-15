@@ -13,6 +13,7 @@
 
     <artifactId>pushover-client</artifactId>
     <name>Pushover Client</name>
+    <description>Core client for the Pushover REST API: messages, attachments, end-to-end encryption, receipts, sounds, limits, user/group validation, glances, delivery groups, and subscription migration.</description>
 
     <url>https://github.com/chrisbarbati/PushoverClient</url>
     <scm>

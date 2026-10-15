@@ -23,6 +23,7 @@ class PushoverClientValidationTest {
     private static final String TOKEN = "a12345678901234567890123456789";
     private static final String USER = "uQiRzpo4DXghDmr9QzzfQu27cmVRsG";
     private static final String INVALID_RECEIPT = "too-short";
+    private static final String GROUP = "go4abk17j3itsva6thz99mdudgq2gm";
 
     /**
      * Verifies mutually exclusive formatting flags are rejected.
@@ -370,6 +371,128 @@ class PushoverClientValidationTest {
                 PushoverClientException.class,
                 () -> client.sendGlance(GlanceRequest.builder(USER).percent(101).build())
         );
+    }
+
+    /**
+     * Verifies group creation rejects a blank name.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void createGroup_rejectsBlankName() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.createGroup("   "));
+    }
+
+    /**
+     * Verifies group retrieval rejects a blank group key.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void getGroup_rejectsBlankGroupKey() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.getGroup("   "));
+    }
+
+    /**
+     * Verifies group retrieval rejects a malformed group key.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void getGroup_rejectsMalformedGroupKey() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.getGroup("too-short"));
+    }
+
+    /**
+     * Verifies adding a user to a group rejects a malformed user key.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void addUserToGroup_rejectsMalformedUser() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.addUserToGroup(GROUP, "too-short", null, null));
+    }
+
+    /**
+     * Verifies adding a user to a group rejects an invalid device name.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void addUserToGroup_rejectsInvalidDevice() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.addUserToGroup(GROUP, USER, "bad device!", null));
+    }
+
+    /**
+     * Verifies adding a user to a group rejects a memo over 200 characters.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void addUserToGroup_rejectsOversizedMemo() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.addUserToGroup(GROUP, USER, null, "x".repeat(201)));
+    }
+
+    /**
+     * Verifies renaming a group rejects a blank name.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void renameGroup_rejectsBlankName() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.renameGroup(GROUP, "   "));
+    }
+
+    /**
+     * Verifies subscription migration rejects a blank subscription code.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void migrateUserToSubscription_rejectsBlankSubscriptionCode() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class, () -> client.migrateUserToSubscription("   ", USER, null, null));
+    }
+
+    /**
+     * Verifies subscription migration rejects a malformed user key.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void migrateUserToSubscription_rejectsMalformedUser() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class,
+                () -> client.migrateUserToSubscription("Forum-f504h08fhlasdfj", "too-short", null, null));
+    }
+
+    /**
+     * Verifies subscription migration rejects an invalid device name.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void migrateUserToSubscription_rejectsInvalidDevice() {
+        PushoverClient client = new PushoverClient(TOKEN);
+
+        assertThrows(PushoverClientException.class,
+                () -> client.migrateUserToSubscription("Forum-f504h08fhlasdfj", USER, "bad device!", null));
     }
 }
 

@@ -2,6 +2,8 @@ package dev.chrisbarbati.pushoverclient.model.message;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import dev.chrisbarbati.pushoverclient.model.PushoverResponse;
+
 /**
  * Success response payload for the messages endpoint.
  *
@@ -16,6 +18,6 @@ public record MessageResponse(
         int status,
         String request,
         String receipt
-) {
+) implements PushoverResponse {
 }
 

@@ -10,8 +10,25 @@
     <packaging>pom</packaging>
 
     <name>Pushover Client Parent</name>
-    <description>Minimal, low-dependency Java client for the Pushover REST API.</description>
+    <description>Low-dependency, full-featured Java 17 client for the Pushover REST API. Covers messages, attachments, end-to-end encryption, emergency receipts and asynchronous acknowledgement, sounds, usage limits, user/group validation, glances, delivery groups, and subscription migration, with optional servlet, Jetty, and Tomcat callback modules.</description>
     <url>https://github.com/chrisbarbati/PushoverClient</url>
+
+    <organization>
+        <name>Christian Barbati</name>
+        <url>https://github.com/chrisbarbati</url>
+    </organization>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/chrisbarbati/PushoverClient/issues</url>
+    </issueManagement>
+
+    <ciManagement>
+        <system>GitHub Actions</system>
+        <url>https://github.com/chrisbarbati/PushoverClient/actions</url>
+    </ciManagement>
+
+    <inceptionYear>2026</inceptionYear>
 
     <licenses>
         <license>
@@ -37,7 +54,7 @@
     </scm>
 
     <properties>
-        <revision>0.9.0</revision>
+        <revision>1.0.0</revision>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.11.4</junit.version>

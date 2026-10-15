@@ -8,9 +8,15 @@ import dev.chrisbarbati.pushoverclient.exception.PushoverClientException;
 import dev.chrisbarbati.pushoverclient.model.attachment.Attachment;
 import dev.chrisbarbati.pushoverclient.model.attachment.AttachmentEncoding;
 import dev.chrisbarbati.pushoverclient.model.glance.GlanceRequest;
+import dev.chrisbarbati.pushoverclient.model.group.GroupCreateResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupDetailsResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupListResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupMutationResponse;
+import dev.chrisbarbati.pushoverclient.model.group.GroupUser;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
+import dev.chrisbarbati.pushoverclient.model.subscription.SubscriptionMigrationResponse;
 import dev.chrisbarbati.pushoverclient.model.SoundsResponse;
 import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +31,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,6 +46,8 @@ class PushoverClientHttpTest {
     private static final String USER = "uQiRzpo4DXghDmr9QzzfQu27cmVRsG";
     private static final String ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     private static final String RECEIPT = "abcdefghijklmnopqrstuvwx123456";
+    private static final String GROUP = "go4abk17j3itsva6thz99mdudgq2gm";
+    private static final String SUBSCRIPTION = "Forum-f504h08fhlasdfj";
 
     private MockWebServer server;
     private PushoverClient client;
@@ -516,6 +525,212 @@ class PushoverClientHttpTest {
         assertEquals(400, ex.getHttpStatus());
         assertEquals("req-tag-fail", ex.getRequestId());
         assertTrue(ex.getErrors().contains("tag is invalid"));
+    }
+
+    /**
+     * Verifies group creation posts the expected form fields and parses the returned group key.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void createGroup_postsFormEncodedAndParsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-cg\",\"group\":\"" + GROUP + "\"}"));
+
+        GroupCreateResponse response = client.createGroup("on-call");
+
+        assertEquals(1, response.status());
+        assertEquals(GROUP, response.group());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/groups.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&name=on-call", request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies group listing constructs an authenticated GET and parses group entries.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void listGroups_parsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-lg\",\"groups\":[{\"group\":\"" + GROUP + "\",\"name\":\"on-call\"}]}"));
+
+        GroupListResponse response = client.listGroups();
+
+        assertEquals(1, response.status());
+        assertEquals(1, response.groups().size());
+        assertEquals(GROUP, response.groups().get(0).group());
+        assertEquals("on-call", response.groups().get(0).name());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().startsWith("/1/groups.json?token="));
+    }
+
+    /**
+     * Verifies group details retrieval constructs an authenticated GET and parses members.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void getGroup_parsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"request\":\"req-gg\",\"name\":\"My Delivery Group\",\"users\":[{\"user\":\"" + USER
+                        + "\",\"device\":null,\"memo\":\"Jim\",\"disabled\":false}]}"));
+
+        GroupDetailsResponse response = client.getGroup(GROUP);
+
+        assertEquals(1, response.status());
+        assertEquals("My Delivery Group", response.name());
+        assertEquals(1, response.users().size());
+        GroupUser member = response.users().get(0);
+        assertEquals(USER, member.user());
+        assertNull(member.device());
+        assertEquals("Jim", member.memo());
+        assertFalse(member.disabled());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertEquals("/1/groups/" + GROUP + ".json?token=" + TOKEN, request.getPath());
+    }
+
+    /**
+     * Verifies adding a user to a group posts the expected fields including device and memo.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void addUserToGroup_postsFormEncodedAndParsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-ag\"}"));
+
+        GroupMutationResponse response = client.addUserToGroup(GROUP, USER, "iphone", "Jim");
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/groups/" + GROUP + "/add_user.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&user=" + USER + "&device=iphone&memo=Jim", request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies removing a user from a group posts only the token and user fields.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void removeUserFromGroup_postsFormEncoded() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-rg\"}"));
+
+        GroupMutationResponse response = client.removeUserFromGroup(GROUP, USER, null);
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/groups/" + GROUP + "/remove_user.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&user=" + USER, request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies disabling a user in a group posts the expected device field.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void disableUserInGroup_postsFormEncoded() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-dg\"}"));
+
+        GroupMutationResponse response = client.disableUserInGroup(GROUP, USER, "iphone");
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/groups/" + GROUP + "/disable_user.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&user=" + USER + "&device=iphone", request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies re-enabling a user in a group posts only the token and user fields.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void enableUserInGroup_postsFormEncoded() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-eg\"}"));
+
+        GroupMutationResponse response = client.enableUserInGroup(GROUP, USER, null);
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/groups/" + GROUP + "/enable_user.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&user=" + USER, request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies renaming a group posts the new name.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void renameGroup_postsFormEncoded() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-rn\"}"));
+
+        GroupMutationResponse response = client.renameGroup(GROUP, "on-call-ops");
+
+        assertEquals(1, response.status());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/groups/" + GROUP + "/rename.json", request.getPath());
+        assertEquals("token=" + TOKEN + "&name=on-call-ops", request.getBody().readUtf8());
+    }
+
+    /**
+     * Verifies subscription migration posts the expected fields and parses the new subscription user key.
+     *
+     * @throws Exception when request processing fails
+     * @since 1.0.0
+     */
+    @Test
+    void migrateUserToSubscription_postsFormEncodedAndParsesResponse() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200)
+                .setBody("{\"status\":1,\"subscribed_user_key\":\"sPfjsD2fGzEd9TR52DU31Hv4A61Vvk\",\"request\":\"req-m\"}"));
+
+        SubscriptionMigrationResponse response = client.migrateUserToSubscription(SUBSCRIPTION, USER, "iphone", "pushover");
+
+        assertEquals(1, response.status());
+        assertEquals("sPfjsD2fGzEd9TR52DU31Hv4A61Vvk", response.subscribedUserKey());
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("/1/subscriptions/migrate.json", request.getPath());
+        assertEquals(
+                "token=" + TOKEN + "&subscription=" + SUBSCRIPTION + "&user=" + USER + "&device_name=iphone&sound=pushover",
+                request.getBody().readUtf8()
+        );
+    }
+
+    /**
+     * Verifies group creation failures map to {@link PushoverApiException}.
+     *
+     * @since 1.0.0
+     */
+    @Test
+    void createGroup_throwsApiExceptionOnFailureResponse() {
+        server.enqueue(new MockResponse().setResponseCode(400)
+                .setBody("{\"status\":0,\"request\":\"req-cg-fail\",\"errors\":[\"name is required\"]}"));
+
+        PushoverApiException ex = assertThrows(PushoverApiException.class, () -> client.createGroup("on-call"));
+
+        assertEquals(400, ex.getHttpStatus());
+        assertEquals("req-cg-fail", ex.getRequestId());
+        assertTrue(ex.getErrors().contains("name is required"));
     }
 }
 

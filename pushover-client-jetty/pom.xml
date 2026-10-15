@@ -13,6 +13,7 @@
 
     <artifactId>pushover-client-jetty</artifactId>
     <name>Pushover Client Jetty Callback Support</name>
+    <description>Jetty-native callback handler and self-managed CallbackServer for Pushover emergency acknowledgement.</description>
 
     <url>https://github.com/chrisbarbati/PushoverClient</url>
     <scm>

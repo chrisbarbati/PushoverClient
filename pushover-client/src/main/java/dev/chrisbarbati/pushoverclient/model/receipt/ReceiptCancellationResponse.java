@@ -2,6 +2,8 @@ package dev.chrisbarbati.pushoverclient.model.receipt;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import dev.chrisbarbati.pushoverclient.model.PushoverResponse;
+
 /**
  * Response payload for receipt cancellation operations.
  *
@@ -14,6 +16,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record ReceiptCancellationResponse(
 		int status,
 		String request
-) {
+) implements PushoverResponse {
 }
 
