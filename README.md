@@ -31,6 +31,7 @@ See [`CHANGELOG.md`](CHANGELOG.md) for version-by-version API coverage.
 I designed this client because I wanted the following:
 
 - **Full-featured** - covers the entire documented Pushover API surface.
+- **Async support** - perform some action after a user has acknowledged a message
 - **Low footprint** - two runtime dependencies in the core module.
 - **Modern Java 17** - `java.net.http`, records, and fluent builders, no framework.
 - **One facade** - all operations live on the single `PushoverClient` class.
@@ -45,56 +46,11 @@ I designed this client because I wanted the following:
 - `pushover-client-jetty` - optional Jetty-native callback `Handler` support plus the Jetty-backed `CallbackServer` implementation for self-managed lifecycle
 - `pushover-client-tomcat` - optional Tomcat-backed `CallbackServer` implementation for self-managed callback lifecycle
 
-## Quick run
-
-Add the core dependency to your build:
-
-```xml
-<dependency>
-    <groupId>dev.chrisbarbati</groupId>
-    <artifactId>pushover-client</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-
-Set your credentials, then paste the `SendMessageExample` class shown in [Programmatic usage](#programmatic-usage) into your own project; it reads these variables from the environment:
-
-```bash
-export PUSHOVER_APP_TOKEN="your_app_token"
-export PUSHOVER_USER_KEY="your_user_key"
-export PUSHOVER_ENCRYPTION_KEY="64_char_hex_key_optional"
-```
-
-Run it with the single-file source launcher (Java 11+) with the jar on the classpath:
-
-```bash
-java -cp pushover-client-1.0.0.jar SendMessageExample.java
-```
-
-The example reads the three values from the environment, sends a normal-priority notification, and prints the request id. It exits quietly if `PUSHOVER_APP_TOKEN` or `PUSHOVER_USER_KEY` is missing.
-
-## Tests
-
-Run unit tests:
-
-```bash
-./mvnw -q test
-```
-
-Optional live integration tests exercise the real Pushover API. They require credentials in
-`pushover-client/src/test/resources/pushover-integration.properties` (copy the
-[`pushover-integration.properties.example`](pushover-client/src/test/resources/pushover-integration.properties.example)
-template) or as system properties, and skip with a warning when credentials are missing:
-
-```bash
-./mvnw -q verify
-```
-
 ## Programmatic usage
 
-```java
-import java.io.IOException;
+The simplest use is sending a message. Place this in your own `main` method, with the dependency on your classpath:
 
+```java
 import dev.chrisbarbati.pushoverclient.PushoverClient;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
@@ -104,17 +60,11 @@ public final class SendMessageExample {
     private SendMessageExample() {
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        String appToken = System.getenv("PUSHOVER_APP_TOKEN");
-        String userKey = System.getenv("PUSHOVER_USER_KEY");
-        String encryptionKey = System.getenv("PUSHOVER_ENCRYPTION_KEY");
+    public static void main(String[] args) throws Exception {
+        String appToken = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5";
+        String userKey = "u1x2y3z4w5v6t7s8r9q0p1o2n3m4l5";
 
-        if (appToken == null || appToken.isBlank() || userKey == null || userKey.isBlank()) {
-            System.out.println("Set PUSHOVER_APP_TOKEN and PUSHOVER_USER_KEY to run this example.");
-            return;
-        }
-
-        PushoverClient client = new PushoverClient(appToken, encryptionKey);
+        PushoverClient client = new PushoverClient(appToken);
 
         MessageRequest request = MessageRequest.builder(userKey, "Backup completed")
                 .title("DB Job")
@@ -127,127 +77,29 @@ public final class SendMessageExample {
 }
 ```
 
-User/group validation before storing or sending to a target key:
+Async acknowledgement: send an emergency message and get back a `CompletableFuture` that completes when it is acknowledged, then chain whatever happens next. For example, a trading bot that alerts a human to a margin call and only resumes its strategy once they acknowledge it (reusing `client` and `userKey` from the example above):
 
 ```java
-import java.io.IOException;
-
-import dev.chrisbarbati.pushoverclient.PushoverClient;
-import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
-
-public final class ValidateUserExample {
-    private ValidateUserExample() {
-    }
-
-    public static UserGroupValidationResponse validate(
-            String appToken,
-            String userOrGroupKey,
-            String optionalDevice
-    ) throws IOException, InterruptedException {
-        PushoverClient client = new PushoverClient(appToken);
-
-        if (optionalDevice == null || optionalDevice.isBlank()) {
-            return client.validateUserOrGroup(userOrGroupKey);
-        }
-        return client.validateUserOrGroup(userOrGroupKey, optionalDevice);
-    }
-}
-```
-
-Receipt follow-up for emergency notifications:
-
-```java
-import java.io.IOException;
-
-import dev.chrisbarbati.pushoverclient.PushoverClient;
-import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
-import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
-import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
-import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
-
-public final class EmergencyReceiptExample {
-    private EmergencyReceiptExample() {
-    }
-
-    public static ReceiptStatusResponse sendAndManageReceipt(
-            String appToken,
-            String userKey,
-            String encryptionHexKey
-    ) throws IOException, InterruptedException {
-        PushoverClient client = new PushoverClient(appToken, encryptionHexKey);
-
-        MessageResponse response = client.sendMessage(MessageRequest.builder(userKey, "Database unavailable")
-                .priority(MessagePriority.EMERGENCY)
-                .retry(30)
-                .expire(300)
-                .callback("https://example.com/pushover/callback")
-                .tags("ops-db")
-                .build());
-
-        ReceiptStatusResponse receipt = client.getReceipt(response.receipt());
-        ReceiptCancellationResponse cancelByReceipt = client.cancelReceipt(response.receipt());
-        ReceiptCancellationResponse cancelByTag = client.cancelByTag("ops-db");
-
-        System.out.println(cancelByReceipt.request());
-        System.out.println(cancelByTag.request());
-        return receipt;
-    }
-}
-```
-
-Async polling for emergency acknowledgements:
-
-```java
-import java.net.http.HttpClient;
-import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import dev.chrisbarbati.pushoverclient.PushoverClient;
-import dev.chrisbarbati.pushoverclient.async.AsyncReceiptProperties;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
-import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
 
-public final class EmergencyPollingAsyncExample {
-    private EmergencyPollingAsyncExample() {
-    }
+ExecutorService executor = Executors.newCachedThreadPool();
 
-    public static CompletableFuture<ReceiptStatusResponse> sendAndAwaitAcknowledgement(
-            String appToken,
-            String userKey
-    ) {
-        AsyncReceiptProperties asyncProperties = AsyncReceiptProperties.builder()
-                .pollInterval(Duration.ofSeconds(5))
-                .pollFutureExpiration(Duration.ofMinutes(10))
-                .build();
+MessageRequest alert = MessageRequest.builder(userKey, "Margin call on BTC/USD")
+        .priority(MessagePriority.EMERGENCY)
+        .retry(30)
+        .expire(300)
+        .build();
 
-        PushoverClient client = new PushoverClient(
-                appToken,
-                null,
-                HttpClient.newHttpClient(),
-                "https://api.pushover.net",
-                asyncProperties,
-                null
-        );
-
-        ExecutorService executorService = Executors.newCachedThreadPool();
-        MessageRequest request = MessageRequest.builder(userKey, "Database unavailable")
-                .priority(MessagePriority.EMERGENCY)
-                .retry(30)
-                .expire(300)
-                .build();
-
-        return client.sendEmergencyMessageAndAwaitAcknowledgement(
-                request,
-                executorService,
-                Duration.ofMinutes(6)
-        );
-    }
-}
+client.sendEmergencyMessageAndAwaitAcknowledgement(alert, executor)
+        .thenAccept(receipt -> System.out.println(
+                "Acknowledged by " + receipt.acknowledgedBy() + " - resuming strategy"));
 ```
+
+Polling is the simplest implementation (and a good candidate for virtual threads), but this can also be driven by a callback instead - mount a `CallbackServlets` endpoint in your servlet container (or use Jetty/Tomcat); see the callback examples below.
 
 Async callback flow uses the same core client behavior in every lifecycle model:
 
@@ -506,6 +358,75 @@ Notes:
 - `sendEmergencyMessageAndAwaitCallback(...)` uses the request callback when present. If it conflicts with the configured default callback URL, the request value wins and a WARN log is emitted unless `warnOnConflictingCallback(false)` is configured.
 - `JettyCallbackServer` requires a caller-supplied `ExecutorService` backed by `ThreadPoolExecutor`, so the library does not hide its callback-server thread usage.
 
+User/group validation before storing or sending to a target key:
+
+```java
+import java.io.IOException;
+
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.validation.UserGroupValidationResponse;
+
+public final class ValidateUserExample {
+    private ValidateUserExample() {
+    }
+
+    public static UserGroupValidationResponse validate(
+            String appToken,
+            String userOrGroupKey,
+            String optionalDevice
+    ) throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken);
+
+        if (optionalDevice == null || optionalDevice.isBlank()) {
+            return client.validateUserOrGroup(userOrGroupKey);
+        }
+        return client.validateUserOrGroup(userOrGroupKey, optionalDevice);
+    }
+}
+```
+
+Receipt follow-up for emergency notifications:
+
+```java
+import java.io.IOException;
+
+import dev.chrisbarbati.pushoverclient.PushoverClient;
+import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
+import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
+import dev.chrisbarbati.pushoverclient.model.message.MessageResponse;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCancellationResponse;
+import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptStatusResponse;
+
+public final class EmergencyReceiptExample {
+    private EmergencyReceiptExample() {
+    }
+
+    public static ReceiptStatusResponse sendAndManageReceipt(
+            String appToken,
+            String userKey,
+            String encryptionHexKey
+    ) throws IOException, InterruptedException {
+        PushoverClient client = new PushoverClient(appToken, encryptionHexKey);
+
+        MessageResponse response = client.sendMessage(MessageRequest.builder(userKey, "Database unavailable")
+                .priority(MessagePriority.EMERGENCY)
+                .retry(30)
+                .expire(300)
+                .callback("https://example.com/pushover/callback")
+                .tags("ops-db")
+                .build());
+
+        ReceiptStatusResponse receipt = client.getReceipt(response.receipt());
+        ReceiptCancellationResponse cancelByReceipt = client.cancelReceipt(response.receipt());
+        ReceiptCancellationResponse cancelByTag = client.cancelByTag("ops-db");
+
+        System.out.println(cancelByReceipt.request());
+        System.out.println(cancelByTag.request());
+        return receipt;
+    }
+}
+```
+
 ### Group administration
 
 ```java
@@ -573,6 +494,23 @@ public final class SubscriptionMigrationExample {
 - POST endpoints send the app token in the request body as a form field, per the Pushover API.
 - For the GET endpoints (`getSounds`, `getLimits`, `getReceipt`), the Pushover API takes the token as a `token=` query parameter. Query strings can appear in server access logs, proxy/gateway logs, and browser or HTTP-client history, so keep the base URL on HTTPS and be cautious when routing traffic through shared network appliances.
 - The app token (and the optional end-to-end encryption key) are held in memory as `String` fields for the lifetime of the `PushoverClient` instance; supply them from environment variables or a secrets store rather than hard-coding.
+
+## Tests
+
+Run unit tests:
+
+```bash
+./mvnw -q test
+```
+
+Optional live integration tests exercise the real Pushover API. They require credentials in
+`pushover-client/src/test/resources/pushover-integration.properties` (copy the
+[`pushover-integration.properties.example`](pushover-client/src/test/resources/pushover-integration.properties.example)
+template) or as system properties, and skip with a warning when credentials are missing:
+
+```bash
+./mvnw -q verify
+```
 
 ## License
 
