@@ -46,6 +46,32 @@ I designed this client because I wanted the following:
 - `pushover-client-jetty` - optional Jetty-native callback `Handler` support plus the Jetty-backed `CallbackServer` implementation for self-managed lifecycle
 - `pushover-client-tomcat` - optional Tomcat-backed `CallbackServer` implementation for self-managed callback lifecycle
 
+## Installation
+
+Add the required modules in your build system of choice. At a bare minimum, you need pushover-client.
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>dev.chrisbarbati</groupId>
+    <artifactId>pushover-client</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+Gradle (Groovy DSL):
+
+```groovy
+implementation 'dev.chrisbarbati:pushover-client:1.0.0'
+```
+
+Gradle (Kotlin DSL):
+
+```kotlin
+implementation("dev.chrisbarbati:pushover-client:1.0.0")
+```
+
 ## Programmatic usage
 
 The simplest use is sending a message. Place this in your own `main` method, with the dependency on your classpath:
