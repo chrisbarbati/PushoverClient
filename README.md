@@ -1,9 +1,12 @@
 # PushoverClient
 
 [![CI](https://github.com/chrisbarbati/PushoverClient/actions/workflows/ci.yml/badge.svg)](https://github.com/chrisbarbati/PushoverClient/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/dev.chrisbarbati/pushover-client.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/dev.chrisbarbati/pushover-client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A low-dependency, full-featured Java client for the Pushover REST API, with async acknowledgement support.
+
+Website: [chrisbarbati.dev/pushover-client](https://chrisbarbati.dev/pushover-client)
 
 ## Overview
 
@@ -49,6 +52,8 @@ I designed this client because I wanted the following:
 ## Installation
 
 Add the required modules in your build system of choice. At a bare minimum, you need pushover-client.
+
+> Replace `1.0.0` in the snippets below with the latest published version (see the Maven Central badge above).
 
 Maven:
 

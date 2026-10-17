@@ -50,7 +50,7 @@ final class HttpTransport {
     HttpTransport(String appToken, HttpClient httpClient, String baseUrl) {
         this.appToken = PushoverStrings.requireNonBlank(appToken, "appToken is required");
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient is required");
-        this.baseUrl = PushoverStrings.requireNonBlank(baseUrl, "baseUrl is required");
+        this.baseUrl = normalizeBaseUrl(PushoverStrings.requireNonBlank(baseUrl, "baseUrl is required"));
         this.objectMapper = new ObjectMapper();
     }
 
@@ -150,6 +150,21 @@ final class HttpTransport {
     }
 
     /**
+     * Removes trailing slashes from the configured base URL so that {@link #buildUri(String)}
+     * never produces a double slash when concatenating endpoint paths.
+     *
+     * @param baseUrl raw base URL
+     * @return normalized base URL without trailing slashes
+     */
+    private static String normalizeBaseUrl(String baseUrl) {
+        String normalized = baseUrl;
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
+    /**
      * Parses successful responses and maps error payloads to {@link PushoverApiException}.
      *
      * <p>When an error response body is not valid JSON (for example a proxy
@@ -170,6 +185,10 @@ final class HttpTransport {
             int httpStatus = response.statusCode();
             if (httpStatus >= 200 && httpStatus < 300) {
                 T value = objectMapper.readValue(body, responseType);
+                if (value == null) {
+                    throw new PushoverClientException(
+                            "API returned a null success body for " + responseType.getSimpleName());
+                }
                 if (value.status() != 1) {
                     ApiErrorResponse error = parseErrorBody(body);
                     List<String> errors = error == null || error.errors() == null ? List.of() : error.errors();

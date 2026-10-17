@@ -406,6 +406,35 @@ class PushoverClientHttpTest {
         assertEquals("Failed to parse API response", ex.getMessage());
     }
 
+    @Test
+    void sendMessage_throwsClientExceptionOnNullSuccessBody() {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("null"));
+
+        PushoverClientException ex = assertThrows(
+                PushoverClientException.class,
+                () -> client.sendMessage(MessageRequest.builder(USER, "plain message").build())
+        );
+
+        assertTrue(ex.getMessage().contains("null success body"));
+    }
+
+    @Test
+    void sendMessage_toleratesTrailingSlashInBaseUrl() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":1,\"request\":\"req-ts\"}"));
+
+        PushoverClient trailingSlashClient = new PushoverClient(
+                TOKEN,
+                null,
+                HttpClient.newHttpClient(),
+                server.url("/").toString()
+        );
+
+        trailingSlashClient.sendMessage(MessageRequest.builder(USER, "trailing slash").build());
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("/1/messages.json", request.getPath());
+    }
+
     /**
      * Verifies HTTP 2xx responses that still report {@code status=0} map to {@link PushoverApiException}.
      *
