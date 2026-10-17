@@ -6,10 +6,10 @@ import dev.chrisbarbati.pushoverclient.callback.servlet.CallbackServlets;
 import dev.chrisbarbati.pushoverclient.model.message.MessagePriority;
 import dev.chrisbarbati.pushoverclient.model.message.MessageRequest;
 import dev.chrisbarbati.pushoverclient.model.receipt.ReceiptCallbackResponse;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -31,19 +31,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Live integration tests for the optional servlet callback adapter.
+ * Live integration tests for the optional servlet callback adapter hosted on Jetty.
  *
  * @apiNote These tests are opt-in and intended for interactive runs because they require the user to acknowledge the delivered notification.
  * @since 0.4.0
  * @author Christian Barbati
  */
-class PushoverClientServletAsyncIT {
-    private static final Logger LOGGER = LoggerFactory.getLogger(PushoverClientServletAsyncIT.class);
+class PushoverClientServletJettyAsyncIT {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PushoverClientServletJettyAsyncIT.class);
     private static final Properties CONFIG = loadConfig();
     private static final Duration USER_ACK_TIMEOUT = Duration.ofMinutes(1);
 
     @Test
-    void live_asyncServletCallbackAcknowledgement_whenEnabled() throws Exception {
+    void live_asyncJettyServletCallbackAcknowledgement_whenEnabled() throws Exception {
         requireAsyncEmergencyTestsEnabled();
 
         String token = required("pushover.appToken");
@@ -84,15 +84,15 @@ class PushoverClientServletAsyncIT {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         try {
             System.out.printf(
-                    "Waiting for servlet callback acknowledgement. Local bind=%s, public callback=%s%n",
+                    "Waiting for Jetty servlet callback acknowledgement. Local bind=%s, public callback=%s%n",
                     callbackBindUri,
                     callbackPublicUri
             );
             MessageRequest request = MessageRequest.builder(
                             user,
-                            "[Async Servlet Callback IT] Please acknowledge this notification within 1 minute so the servlet callback async integration test can pass."
+                            "[Async Jetty Servlet Callback IT] Please acknowledge this notification within 1 minute so the Jetty-hosted servlet callback async integration test can pass."
                     )
-                    .title("PushoverClient Async Servlet Callback IT")
+                    .title("PushoverClient Async Jetty Servlet Callback IT")
                     .priority(MessagePriority.EMERGENCY)
                     .retry(30)
                     .expire(300)
@@ -138,7 +138,7 @@ class PushoverClientServletAsyncIT {
     }
 
     private static String uniqueTag() {
-        return "pushoverclient-async-servlet-" + (System.currentTimeMillis() / 1000L);
+        return "pushoverclient-async-servlet-jetty-" + (System.currentTimeMillis() / 1000L);
     }
 
     private static String valueOrPlaceholder(String value) {
@@ -212,7 +212,7 @@ class PushoverClientServletAsyncIT {
 
     private static Properties loadConfig() {
         Properties props = new Properties();
-        try (InputStream in = PushoverClientServletAsyncIT.class.getClassLoader().getResourceAsStream("pushover-integration.properties")) {
+        try (InputStream in = PushoverClientServletJettyAsyncIT.class.getClassLoader().getResourceAsStream("pushover-integration.properties")) {
             if (in != null) {
                 props.load(in);
             } else {

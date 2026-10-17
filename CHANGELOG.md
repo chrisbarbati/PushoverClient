@@ -2,6 +2,14 @@
 
 All user-facing API coverage changes for this project are tracked here.
 
+## [1.0.2] - 2026-10-17
+
+### Changed
+- Migrated `pushover-client-servlet` to Jetty 12 `ee10`, `jakarta.servlet-api` from `5.0.0` to `6.0.0` (Jakarta Servlet 6.0).
+
+### Added
+- Live async acknowledgement integration coverage for the servlet callback adapter hosted on Tomcat, alongside the existing Jetty-hosted test (renamed to `PushoverClientServletJettyAsyncIT` for clarity)
+
 ## [1.0.0] - 2026-10-15
 
 ### Added
